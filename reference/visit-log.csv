@@ -1,0 +1,6 @@
+outlet,date,day_of_week,arrival_time_approx,party_size,booked,wait_minutes_low,wait_minutes_high,outcome,source,confidence,note
+Khar,,,evening,6-7,no,30,30,seated,user_recall,low,first visit; walk-in; approximate
+Khar,,Friday,18:00,18,yes (District),0,0,seated,user_recall,low,booked 6 pm; first to arrive; 5-10 min to join tables
+Chembur,,Friday or Saturday,20:00-21:00,5,no,60,120,unknown,user_recall,low,visit 1 of 3; Chembur outlet opened about Sep 2026 (Time Out)
+Chembur,,Friday or Saturday,20:00-21:00,5,no,60,120,unknown,user_recall,low,visit 2 of 3
+Chembur,,Friday or Saturday,20:00-21:00,5,no,60,120,unknown,user_recall,low,visit 3 of 3

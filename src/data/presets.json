@@ -1,0 +1,12 @@
+{
+  "tag": "ASSUMED",
+  "source": "none",
+  "confidence": "low",
+  "note": "Illustrative situations for Explore. Each is a fixed bundle of inputs, not a measurement and not random. No evidence supports any of these values; every value lies inside its range in params.json. Inputs a bundle does not name stay at their registry value.",
+  "presets": [
+    { "id": "registry", "label": "Registry values", "values": {} },
+    { "id": "quiet", "label": "Quiet weeknight", "values": { "arrival_scale": 0.7 } },
+    { "id": "rush", "label": "Weekend rush", "values": { "arrival_scale": 1.3, "dwell_median_min": 95, "stepout_share": 0.3, "washroom_share": 0.5 } },
+    { "id": "kitchen", "label": "Kitchen under strain", "values": { "dwell_median_min": 90, "remake_share": 0.2, "remake_delay_min": 10 } }
+  ]
+}

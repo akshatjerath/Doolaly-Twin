@@ -1,0 +1,22 @@
+{
+  "source": "reference/layout/layout-rough-v2.webp (rough floor plan supplied by the user, 2026-11-14; pixel coordinates, proportions only). Supersedes layout-sketch.png.",
+  "metresPerPx": { "value": 0.0165, "tag": "ASSUMED", "note": "The plan has no scale. Chosen so the drawn tables are a plausible size; every dimension in the scene follows from this." },
+  "stepCount": { "value": 4, "tag": "OBSERVED", "note": "User: steps go up, about 3-4 steps." },
+  "stepRiseM": { "value": 0.15, "tag": "ASSUMED", "note": "Riser height is a typical value, not measured." },
+  "proposed": [
+    { "id": "kiosk", "scenario": "A", "label": "Proposed waitlist kiosk", "rect": [225, 885, 265, 925], "note": "Does not exist today. A design proposal for a token kiosk just inside the gate. ASSUMED LAYOUT: no plan, photo or visit fixes where it would stand." },
+    { "id": "lounge", "scenario": "B", "label": "Proposed wait lounge", "rect": [500, 700, 685, 920], "note": "Does not exist today. A design proposal for the landing below the steps. Serving here needs Excise confirmation (register R8)." },
+    { "id": "takeaway", "scenario": "C", "label": "Proposed takeaway counter", "rect": [452, 790, 478, 925], "note": "Does not exist today. A design proposal beside the entrance. Takeaway sales need separate licensing (register R8)." }
+  ],
+  "zones": [
+    { "id": "entrance", "label": "Entrance and gate", "rect": [275, 870, 445, 950], "tag": "OBSERVED", "note": "At the street edge of the outdoor seating, facing Road No. 3 (user's rough plan).", "assumed": "Gate width, host stand position, wall heights.", "openQuestion": "" },
+    { "id": "pavement", "label": "Pavement queue (public space)", "rect": [275, 955, 760, 1040], "tag": "OBSERVED", "note": "User: walk-ins wait on the pavement outside the gate. This is public pavement, not venue space.", "assumed": "Pavement depth and where the line forms.", "openQuestion": "How long does the line get on a busy night?" },
+    { "id": "outdoor", "label": "Outdoor seating", "rect": [45, 300, 330, 860], "tag": "OBSERVED", "note": "Left side of the user's plan. Tent roof, plank floor and bar-height pine tables follow listing photo 1, which the user confirmed is this zone.", "assumed": "Dimensions and table count (the plan's four tables are indicative).", "openQuestion": "" },
+    { "id": "steps", "label": "Steps up to the indoor seating", "rect": [505, 620, 670, 690], "tag": "OBSERVED", "note": "User: about 3-4 steps going up. Position from the rough plan.", "assumed": "Riser height, width, and that the landing below opens onto the outdoor side.", "openQuestion": "How do guests reach the landing below the steps?" },
+    { "id": "hall", "label": "Indoor seating", "rect": [400, 330, 1180, 620], "tag": "OBSERVED", "note": "Upper part of the indoor hall with long tables (user's rough plan). Glass walls and pendant lamps follow listing photo 2.", "assumed": "Dimensions and table count (indicative).", "openQuestion": "" },
+    { "id": "small", "label": "Indoor seating, street side", "rect": [690, 640, 1150, 930], "tag": "OBSERVED", "note": "Lower part of the same indoor hall (user's rough plan).", "assumed": "Dimensions and table count (indicative).", "openQuestion": "" },
+    { "id": "bar", "label": "Bar", "rect": [455, 60, 940, 300], "tag": "ASSUMED LAYOUT", "note": "Position from the user's rough plan only, along the back of the indoor hall; fittings are not modelled. Bar stools are not counted as seats in the simulation.", "assumed": "Position, length, number of taps and stools, all fittings.", "openQuestion": "Is the bar where the rough plan shows it? Do walk-in parties use the bar stools?" },
+    { "id": "kitchen", "label": "Kitchen", "rect": [945, 60, 1280, 350], "tag": "ASSUMED LAYOUT", "note": "Position from the user's rough plan; the interior is not modelled.", "assumed": "Size and everything inside.", "openQuestion": "Kitchen interior is not modelled." },
+    { "id": "passage", "label": "Washrooms", "rect": [40, 55, 395, 255], "tag": "ASSUMED LAYOUT", "note": "Position from the user's rough plan; the interior is not modelled.", "assumed": "Size and everything inside.", "openQuestion": "Washroom interior is not modelled." }
+  ]
+}

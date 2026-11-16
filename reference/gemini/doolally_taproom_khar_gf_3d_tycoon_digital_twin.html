@@ -1,0 +1,2382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Doolally Taproom Khar (GF) — 3D Tycoon & Digital Twin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Primary Three.js r128 CDN + automatic unpkg fallback -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+    onerror="var s=document.createElement('script');s.src='https://unpkg.com/three@0.128.0/build/three.min.js';document.head.appendChild(s);"></script>
+  <style>
+    :root {
+      --bg-panel: rgba(17, 20, 26, 0.90);
+      --bg-card: rgba(28, 33, 43, 0.92);
+      --border-subtle: rgba(245, 158, 11, 0.28);
+      --border-bright: rgba(245, 158, 11, 0.65);
+      --amber: #f59e0b;
+      --amber-light: #fcd34d;
+      --emerald: #10b981;
+      --crimson: #ef4444;
+      --sky: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #0d1017; color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    /* Fullscreen WebGL Viewport */
+    #viewport {
+      position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 1;
+      cursor: grab; touch-action: none;
+    }
+    #viewport:active { cursor: grabbing; }
+
+    /* 3D Projected World Labels & Agent Badges */
+    #world-labels {
+      position: fixed; inset: 0; pointer-events: none; z-index: 5; overflow: hidden;
+    }
+    .zone-tag {
+      position: absolute; transform: translate(-50%, -50%);
+      background: rgba(15, 18, 24, 0.84); border: 1px solid rgba(255,255,255,0.22);
+      color: #f8fafc; font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+      padding: 3px 7px; border-radius: 6px; white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+    }
+    .zone-tag.lens-badge {
+      font-size: 11px; padding: 4px 9px; border-width: 1.5px;
+    }
+    .agent-pill {
+      position: absolute; transform: translate(-50%, -100%);
+      background: rgba(15, 23, 42, 0.92); border: 1.5px solid #38bdf8;
+      color: #fff; font-size: 10px; font-weight: 700;
+      padding: 2px 6px; border-radius: 999px; white-space: nowrap;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.55);
+    }
+
+    /* Top Tycoon HUD Bar */
+    #top-hud {
+      position: fixed; top: 10px; left: 10px; right: 10px; z-index: 20;
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+      pointer-events: none;
+    }
+    .hud-group {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+      background: var(--bg-panel); border: 1px solid var(--border-subtle);
+      border-radius: 12px; padding: 6px 10px; backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45); pointer-events: auto;
+    }
+    .brand-title {
+      display: flex; align-items: center; gap: 8px; padding-right: 6px;
+      border-right: 1px solid rgba(255,255,255,0.12);
+    }
+    .brand-badge {
+      background: linear-gradient(135deg, #f59e0b, #d97706); color: #111;
+      font-weight: 800; font-size: 11px; padding: 3px 7px; border-radius: 6px;
+    }
+    .rating-box {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 3px 8px; border-radius: 8px;
+    }
+    .rating-val {
+      font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 13px; color: #34d399;
+    }
+    .status-pill {
+      display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700;
+      padding: 4px 9px; border-radius: 8px; border: 1px solid;
+    }
+    .status-green { background: rgba(16,185,129,0.16); border-color: rgba(16,185,129,0.5); color: #6ee7b7; }
+    .status-amber { background: rgba(245,158,11,0.18); border-color: rgba(245,158,11,0.55); color: #fcd34d; }
+    .status-red   { background: rgba(239,68,68,0.22); border-color: rgba(239,68,68,0.65); color: #fca5a5; animation: pulseRed 1.2s infinite; }
+    @keyframes pulseRed { 0%,100% { opacity: 1; } 50% { opacity: 0.65; } }
+
+    .btn {
+      background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(255,255,255,0.14);
+      color: #e2e8f0; font-size: 11px; font-weight: 600; padding: 5px 9px;
+      border-radius: 8px; cursor: pointer; transition: all 0.15s ease;
+      display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+    }
+    .btn:hover { background: rgba(51, 65, 85, 0.95); border-color: var(--amber); color: #fff; }
+    .btn.active {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border-color: #fbbf24; color: #0f172a; font-weight: 700;
+    }
+    .btn.toggle-on {
+      background: rgba(56, 189, 248, 0.22); border-color: #38bdf8; color: #7dd3fc;
+    }
+    .btn.danger-btn {
+      background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.55); color: #fca5a5;
+    }
+    .btn.danger-btn:hover { background: rgba(239, 68, 68, 0.35); color: #fff; }
+
+    /* Left SimCity Lenses Dock */
+    #lens-dock {
+      position: fixed; left: 12px; top: 50%; transform: translateY(-50%); z-index: 20;
+      display: flex; flex-direction: column; gap: 7px;
+      background: var(--bg-panel); border: 1px solid var(--border-subtle);
+      border-radius: 14px; padding: 8px; backdrop-filter: blur(12px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.5);
+    }
+    .dock-title {
+      font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--amber); text-align: center; padding-bottom: 2px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .lens-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      width: 68px; padding: 7px 4px; border-radius: 10px;
+      background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.12);
+      color: #cbd5e1; font-size: 10px; font-weight: 600; text-align: center;
+      cursor: pointer; transition: all 0.15s ease; gap: 3px;
+    }
+    .lens-btn span.ico { font-size: 16px; }
+    .lens-btn:hover { border-color: var(--amber); color: #fff; transform: translateX(2px); }
+    .lens-btn.active {
+      background: linear-gradient(135deg, rgba(245,158,11,0.28), rgba(217,119,6,0.35));
+      border-color: #fbbf24; color: #fef3c7; box-shadow: 0 0 14px rgba(245,158,11,0.3);
+    }
+
+    /* Bottom Controls & RCT Guest Thought Ticker */
+    #bottom-bar {
+      position: fixed; bottom: 10px; left: 10px; right: 10px; z-index: 20;
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+      pointer-events: none;
+    }
+    .ticker-box {
+      flex: 1; min-width: 240px; max-width: 680px;
+      background: var(--bg-panel); border: 1px solid var(--border-subtle);
+      border-radius: 12px; padding: 6px 12px; backdrop-filter: blur(12px);
+      display: flex; align-items: center; gap: 10px; pointer-events: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    }
+    .ticker-badge {
+      background: rgba(56, 189, 248, 0.18); border: 1px solid rgba(56, 189, 248, 0.45);
+      color: #7dd3fc; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px;
+      white-space: nowrap;
+    }
+    #thought-text {
+      font-size: 11.5px; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* Pop-Out Tycoon Drawer Windows */
+    .drawer-window {
+      position: fixed; top: 64px; right: 14px; width: 410px; max-width: calc(100vw - 28px);
+      max-height: calc(100vh - 130px); overflow-y: auto; z-index: 30;
+      background: rgba(15, 18, 25, 0.95); border: 1px solid var(--border-bright);
+      border-radius: 14px; padding: 14px; backdrop-filter: blur(16px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7); display: none;
+    }
+    .drawer-window.open { display: block; animation: slideIn 0.18s ease-out; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    .drawer-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+    .drawer-header h3 { font-size: 14px; font-weight: 800; color: var(--amber-light); display: flex; align-items: center; gap: 6px; }
+    .close-x {
+      background: rgba(255,255,255,0.08); border: none; color: #cbd5e1;
+      width: 24px; height: 24px; border-radius: 6px; cursor: pointer; font-weight: 700;
+    }
+    .close-x:hover { background: rgba(239,68,68,0.3); color: #fff; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+    .kpi-card {
+      background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 8px 10px;
+    }
+    .kpi-label { font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+    .kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 800; color: #fff; margin-top: 2px; }
+    .kpi-sub { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+
+    .section-box {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 10px; padding: 10px; margin-bottom: 10px;
+    }
+    .section-title { font-size: 11px; font-weight: 800; color: var(--amber); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .row-item {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11.5px; padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,0.07);
+    }
+    .row-item:last-child { border-bottom: none; }
+    .bar-track { width: 100%; height: 7px; background: rgba(255,255,255,0.1); border-radius: 99px; overflow: hidden; margin-top: 4px; }
+    .bar-fill { height: 100%; border-radius: 99px; transition: width 0.25s ease; }
+
+    /* Smartphone SMS Preview inside SMS Maker Drawer */
+    .phone-frame {
+      background: #0b141a; border: 2px solid #334155; border-radius: 18px;
+      padding: 10px; margin-top: 8px;
+    }
+    .phone-header {
+      display: flex; align-items: center; gap: 8px; padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 11px; font-weight: 700; color: #34d399;
+    }
+    .wa-bubble {
+      background: #005c4b; color: #e9edef; font-size: 11.5px; line-height: 1.4;
+      padding: 8px 10px; border-radius: 10px 10px 2px 10px; margin-top: 8px;
+    }
+
+    /* Toast Banner */
+    #toast-banner {
+      position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 40;
+      background: rgba(16, 185, 129, 0.94); color: #052e16; font-weight: 800; font-size: 12px;
+      padding: 7px 16px; border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+    }
+    #toast-banner.show { opacity: 1; }
+
+    /* Error Fallback Box */
+    #webgl-error {
+      position: fixed; inset: 0; z-index: 999; background: #0f172a; color: #fca5a5;
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px; text-align: center;
+    }
+    table.mini-tbl { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    table.mini-tbl th, table.mini-tbl td { padding: 5px 4px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    table.mini-tbl th { color: var(--amber-light); font-weight: 700; }
+    .tag-verified { background: rgba(16,185,129,0.2); color: #6ee7b7; padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+    .tag-input { background: rgba(56,189,248,0.2); color: #7dd3fc; padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+    .tag-sim { background: rgba(245,158,11,0.2); color: #fcd34d; padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+
+    @media (max-width: 768px) {
+      #lens-dock { top: auto; bottom: 58px; left: 8px; right: 8px; transform: none; flex-direction: row; justify-content: space-around; padding: 5px; }
+      .dock-title { display: none; }
+      .lens-btn { width: auto; flex: 1; padding: 5px 2px; font-size: 9px; }
+      .drawer-window { top: 96px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 175px); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Fullscreen 3D WebGL Canvas -->
+  <div id="viewport"></div>
+  <!-- Projected 3D Labels & Agent Mood Badges -->
+  <div id="world-labels"></div>
+  <!-- Live Event Toast -->
+  <div id="toast-banner"></div>
+  <!-- Crash-Proof Error Overlay -->
+  <div id="webgl-error">
+    <h2 style="font-size:18px;margin-bottom:8px;">3D WebGL Initialization Notice</h2>
+    <p id="webgl-error-msg" style="font-size:13px;max-width:520px;line-height:1.5;"></p>
+  </div>
+
+  <!-- TOP TYCOON & COMPLIANCE HUD -->
+  <div id="top-hud">
+    <div class="hud-group">
+      <div class="brand-title">
+        <span class="brand-badge">RCT × SIMCITY</span>
+        <div>
+          <div style="font-size:12px;font-weight:800;line-height:1.1;">DOOLALLY KHAR (GF)</div>
+          <div style="font-size:9.5px;color:#94a3b8;">Multilink House, Road No. 3</div>
+        </div>
+      </div>
+      <div class="rating-box" title="Live Taproom Guest Experience & Compliance Rating (0–999)">
+        <span style="font-size:10px;color:#a7f3d0;font-weight:700;">RATING</span>
+        <span id="venue-rating" class="rating-val">868</span>
+        <span style="font-size:9.5px;color:#6ee7b7;">/999</span>
+      </div>
+      <div id="safety-pill" class="status-pill status-green">
+        <span>●</span>
+        <span id="safety-text">1.0m Exit + 1.50m Footpath: CLEAR</span>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#fcd34d;padding:0 4px;" id="sim-clock">
+        SAT 20:15
+      </div>
+    </div>
+
+    <!-- 3 Transformation Scenarios -->
+    <div class="hud-group">
+      <button class="btn" id="scen-1" onclick="setScenario(1)">1. Baseline Queue</button>
+      <button class="btn active" id="scen-2" onclick="setScenario(2)">2. FL-III Lounge + Kiosk</button>
+      <button class="btn" id="scen-3" onclick="setScenario(3)">3. Full Twin + 60-Seat Pack</button>
+    </div>
+
+    <!-- Analytics & Action Drawers -->
+    <div class="hud-group">
+      <button class="btn" id="btn-pnl" onclick="toggleDrawer('drawer-pnl')">💰 P&L</button>
+      <button class="btn" id="btn-kegs" onclick="toggleDrawer('drawer-kegs')">🍺 Kegs & Top</button>
+      <button class="btn" id="btn-traffic" onclick="toggleDrawer('drawer-traffic')">🚶 Traffic</button>
+      <button class="btn" id="btn-sms" onclick="toggleDrawer('drawer-sms')">📲 SMS Maker</button>
+      <button class="btn" id="btn-match" onclick="toggleMatchNight()">🏏 MI Match</button>
+      <button class="btn" id="btn-monsoon" onclick="toggleMonsoon()">🌧️ Monsoon</button>
+      <button class="btn" style="border-color:#34d399;color:#6ee7b7;" onclick="spawnGuestPass()">💎 Guest Pass</button>
+      <button class="btn toggle-on" id="btn-labels" onclick="toggleLabels()">🏷️ Labels</button>
+      <button class="btn" id="btn-audit" onclick="toggleDrawer('drawer-audit')">🛡️ Ops & Audit</button>
+    </div>
+  </div>
+
+  <!-- LEFT SIMCITY DATA LENSES DOCK -->
+  <div id="lens-dock">
+    <div class="dock-title">SimCity Lens</div>
+    <button class="lens-btn active" id="lens-normal" onclick="setLens('normal')">
+      <span class="ico">🏠</span><span>Normal View</span>
+    </button>
+    <button class="lens-btn" id="lens-safety" onclick="setLens('safety')">
+      <span class="ico">🚦</span><span>Queue & Safety</span>
+    </button>
+    <button class="lens-btn" id="lens-mood" onclick="setLens('mood')">
+      <span class="ico">😊</span><span>Guest Mood</span>
+    </button>
+    <button class="lens-btn" id="lens-profit" onclick="setLens('profit')">
+      <span class="ico">💸</span><span>Profit Zones</span>
+    </button>
+  </div>
+
+  <!-- BOTTOM CAMERA CONTROLS & RCT THOUGHT TICKER -->
+  <div id="bottom-bar">
+    <div class="hud-group">
+      <button class="btn" id="btn-play" onclick="togglePlay()">⏸ Pause</button>
+      <button class="btn active" id="spd-1" onclick="setSpeed(1)">1× Live</button>
+      <button class="btn" id="spd-5" onclick="setSpeed(5)">5× Fast</button>
+      <button class="btn" id="spd-15" onclick="setSpeed(15)">15× Rush</button>
+      <button class="btn" onclick="snapRotate90()">↻ 90° RCT</button>
+      <button class="btn" id="btn-cam" onclick="toggleCameraMode()">🎥 Ortho Iso</button>
+      <button class="btn" onclick="resetCamera()">🎯 Reset</button>
+    </div>
+
+    <div class="ticker-box">
+      <span class="ticker-badge">GUEST FEED</span>
+      <span id="thought-text">"Scanning QR at Entry Foyer — 180ml Alphonso Mead taster & House Fries while waiting!"</span>
+    </div>
+  </div>
+
+  <!-- DRAWER 1: CALIBRATED P&L & 100-RUN BENCHMARKS -->
+  <div class="drawer-window" id="drawer-pnl">
+    <div class="drawer-header">
+      <h3>💰 Shift P&L & Unit Economics (Khar GF)</h3>
+      <button class="close-x" onclick="closeAllDrawers()">✕</button>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Live Shift Revenue</div>
+        <div class="kpi-val" id="pnl-rev">₹2,94,500</div>
+        <div class="kpi-sub" id="pnl-mix">51% Beer · 45% Food · 4% Mug</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Modelled Shift EBITDA</div>
+        <div class="kpi-val" style="color:#34d399;" id="pnl-ebitda">₹2,56,000</div>
+        <div class="kpi-sub" id="pnl-margin">Gross Margin: 76.0%</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Wait Lounge + Kiosk</div>
+        <div class="kpi-val" style="color:#fcd34d;" id="pnl-lounge">₹48,200</div>
+        <div class="kpi-sub">180ml Tasters @ ₹200 + Fries @ ₹350</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Saved Walk-Away Rev</div>
+        <div class="kpi-val" style="color:#38bdf8;" id="pnl-saved">₹72,000</div>
+        <div class="kpi-sub">vs. Baseline 26% Walk-Away</div>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <div class="section-title">Calibrated Brewery & Kitchen COGS Inputs</div>
+      <div class="row-item"><span>Landed Beer COGS (₹55 raw + ₹60 MH excise + ₹35 utils)</span><strong>₹150.00 / L</strong></div>
+      <div class="row-item"><span>Effective Sold-Litre COGS (after 6.0% foam/purge loss)</span><strong>₹159.57 / L</strong></div>
+      <div class="row-item"><span>180 ml Taster (₹200 menu · ₹28.72 COGS)</span><strong style="color:#34d399;">85.6% GM</strong></div>
+      <div class="row-item"><span>330 ml Pour (₹330 menu · ₹52.66 COGS)</span><strong style="color:#34d399;">84.0% GM</strong></div>
+      <div class="row-item"><span>500 ml Mug Club (₹330 + ₹75 amortized fee · ₹79.79 COGS)</span><strong style="color:#34d399;">80.3% GM</strong></div>
+      <div class="row-item"><span>Food Attach (0.72 items/pour @ ₹390 avg · 32% COGS)</span><strong style="color:#34d399;">68.0% GM</strong></div>
+      <div class="row-item"><span>Fixed Shift OpEx (₹28k Staff + ₹34k Rent/Utils + ₹4.5k Comps)</span><strong>₹66,500 / shift</strong></div>
+    </div>
+
+    <div class="section-box">
+      <div class="section-title">100-Replication Scenario Benchmarks (Simulated)</div>
+      <table class="mini-tbl">
+        <thead>
+          <tr><th>Metric</th><th>Scen 1 (Base)</th><th>Scen 2 (Lounge)</th><th>Scen 3 (Full)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Avg Wait Time</td><td>38 min</td><td>16 min</td><td style="color:#34d399;">11 min</td></tr>
+          <tr><td>Walk-Away Rate</td><td>26.0%</td><td>6.5%</td><td style="color:#34d399;">3.2%</td></tr>
+          <tr><td>Corridor Breach Risk</td><td style="color:#fca5a5;">78%</td><td>6%</td><td style="color:#34d399;">0%</td></tr>
+          <tr><td>Shift EBITDA</td><td>₹1,84,000</td><td>₹2,56,000</td><td style="color:#34d399;">₹2,89,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DRAWER 2: 8-TAP 30L KEG BANK & MOST SELLING -->
+  <div class="drawer-window" id="drawer-kegs">
+    <div class="drawer-header">
+      <h3>🍺 8-Tap 30L Keg Bank & Top Sellers</h3>
+      <button class="close-x" onclick="closeAllDrawers()">✕</button>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Cellar Par Stock</div>
+        <div class="kpi-val" id="keg-total-stock">25 Kegs (750 L)</div>
+        <div class="kpi-sub">ROP Alert at 10 Kegs (300 L)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Net Keg Yield (6% Waste)</div>
+        <div class="kpi-val" style="color:#fcd34d;">28.2 L / Keg</div>
+        <div class="kpi-sub">~79 Blended Pours per 30L Keg</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <button class="btn active" style="flex:1;justify-content:center;" onclick="restockAllKegs()">🔄 Restock Par (25 Kegs)</button>
+    </div>
+    <div class="section-box" id="tap-list-container"></div>
+    <div class="section-box">
+      <div class="section-title">Most Selling Khar Menu Items (Historical + Sim)</div>
+      <div class="row-item"><span>1. Alphonso Mead (180ml Lounge Taster / 330ml)</span><strong>₹200 / ₹330</strong></div>
+      <div class="row-item"><span>2. Crisp Apple Cider (Tap 6 — High-Carb 17s 2-Stage)</span><strong>₹200 / ₹330</strong></div>
+      <div class="row-item"><span>3. House Fries (Khar Benchmark · Express Kiosk)</span><strong>₹350</strong></div>
+      <div class="row-item"><span>4. Belgian Witbier (Tap 7 — 17s 2-Stage Pour)</span><strong>₹330 / ₹500</strong></div>
+      <div class="row-item"><span>5. Radhaballabhi / Burmese Khaw Swe (Zomato Khar)</span><strong>₹333 / ₹429</strong></div>
+    </div>
+  </div>
+
+  <!-- DRAWER 3: WALK-IN TRAFFIC & 60-SEAT CAPACITY -->
+  <div class="drawer-window" id="drawer-traffic">
+    <div class="drawer-header">
+      <h3>🚶 Road No. 3 Traffic & 60-Seat Funnel</h3>
+      <button class="close-x" onclick="closeAllDrawers()">✕</button>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Arrival Rate (λ)</div>
+        <div class="kpi-val" id="traf-arr">42 grp/hr</div>
+        <div class="kpi-sub" id="traf-mode">Fri–Sat Peak Surge</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Avg Wait / Walk-Away</div>
+        <div class="kpi-val" id="traf-wait">16m · 6.5%</div>
+        <div class="kpi-sub" id="traf-renege">Seated vs Reneged</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">60-Seat Occupancy</div>
+        <div class="kpi-val" id="traf-seats">46 / 60</div>
+        <div class="kpi-sub" id="traf-breakdown">38 Indoor · 6 Bar · 16 Patio</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">FL-III Lounge Cap</div>
+        <div class="kpi-val" id="traf-lounge">9 / 16 pax</div>
+        <div class="kpi-sub">≥10 sq.m Red-Ink Permit Cap</div>
+      </div>
+    </div>
+    <div class="section-box">
+      <div class="section-title">Ground-Floor Spatial Seat Inventory (60 Total)</div>
+      <div class="row-item"><span>Indoor Communal Upper Row (6 + 10 + 6 seats)</span><strong>22 Seats</strong></div>
+      <div class="row-item"><span>Indoor Communal Lower-Right 2×2 Grid (4 × 4 seats)</span><strong>16 Seats</strong></div>
+      <div class="row-item"><span>North Honey-Oak Bar Counter (8 Draft Taps)</span><strong>6 Stools</strong></div>
+      <div class="row-item"><span>West Wooden-Deck Outdoor Patio (4 × 4 tables)</span><strong id="patio-status-txt">16 Seats (Open)</strong></div>
+    </div>
+    <div class="section-box">
+      <div class="section-title">Guest Archetypes in Simulation</div>
+      <div class="row-item"><span>🍺 Craft Lover (orders 180ml taster in lounge)</span><span style="color:#34d399;">32%</span></div>
+      <div class="row-item"><span>💎 Mug Club VIP (4s RFID check-in, 500ml pour)</span><span style="color:#38bdf8;">22%</span></div>
+      <div class="row-item"><span>🎲 Board-Game / MI Match Lingerer (105–140m)</span><span style="color:#fcd34d;">24%</span></div>
+      <div class="row-item"><span>🍟 Late-Night Foodie (high food attach 0.85)</span><span style="color:#c084fc;">12%</span></div>
+      <div class="row-item"><span>😤 Impatient Group (balks if footpath spills)</span><span style="color:#fca5a5;">10%</span></div>
+    </div>
+  </div>
+
+  <!-- DRAWER 4: WHATSAPP / SMS NOTIFICATION MAKER -->
+  <div class="drawer-window" id="drawer-sms">
+    <div class="drawer-header">
+      <h3>📲 WhatsApp / SMS Notification Maker</h3>
+      <button class="close-x" onclick="closeAllDrawers()">✕</button>
+    </div>
+    <div class="section-box">
+      <div class="section-title">Select Automated Trigger Template</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;">
+        <button class="btn active" onclick="setSmsTemplate('checkin')">1. QR Check-In</button>
+        <button class="btn" onclick="setSmsTemplate('taster')">2. 180ml Taster Ready</button>
+        <button class="btn" onclick="setSmsTemplate('ready')">3. Table Ready (Seat Now)</button>
+        <button class="btn" onclick="setSmsTemplate('hold')">4. 16-Pax Spillover Hold</button>
+      </div>
+      <label style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">Custom Message / Guest Name:</label>
+      <input id="sms-guest-name" type="text" value="Aarav (Party of 4 · Mug Club)"
+        style="width:100%;background:#1e293b;border:1px solid #475569;color:#fff;padding:6px 8px;border-radius:7px;font-size:11px;margin-bottom:6px;"
+        oninput="updateSmsPreview()" />
+      <textarea id="sms-body-input" rows="3"
+        style="width:100%;background:#1e293b;border:1px solid #475569;color:#fff;padding:6px 8px;border-radius:7px;font-size:11px;resize:none;"
+        oninput="updateSmsPreview()"></textarea>
+
+      <div class="phone-frame">
+        <div class="phone-header">
+          <span>🟢 Doolally Taproom Khar · Verified Business</span>
+        </div>
+        <div class="wa-bubble" id="sms-preview-bubble"></div>
+      </div>
+
+      <button class="btn active" style="width:100%;justify-content:center;margin-top:8px;padding:8px;" onclick="dispatchLiveSms()">
+        🚀 Dispatch Alert & Seat Next Waiting Party
+      </button>
+    </div>
+  </div>
+
+  <!-- DRAWER 5: GROK RED-TEAM COUNTERS & PERPLEXITY EVIDENCE AUDIT -->
+  <div class="drawer-window" id="drawer-audit">
+    <div class="drawer-header">
+      <h3>🛡️ Grok Red-Team & Evidence Audit</h3>
+      <button class="close-x" onclick="closeAllDrawers()">✕</button>
+    </div>
+
+    <div class="section-box">
+      <div class="section-title">Grok Red-Team Operational & Compliance Counters</div>
+      <div style="margin-bottom:8px;">
+        <button class="btn danger-btn" style="width:100%;justify-content:center;padding:8px;" onclick="triggerEmergencyClear()">
+          🚨 Run 60-Sec Emergency Egress Clear (BMC Fire Drill)
+        </button>
+        <div id="egress-timer-msg" style="font-size:10.5px;color:#fcd34d;margin-top:4px;text-align:center;">
+          Folds modular lounge furniture flush & verifies 1.0m + 1.50m clear paths.
+        </div>
+      </div>
+      <div class="row-item">
+        <span>⏱️ 25-Min Lounge Soft Timer (Prevents Taster Camping)</span>
+        <button class="btn toggle-on" id="tog-softtimer" onclick="toggleGuardrail('softTimer', 'tog-softtimer')">ON</button>
+      </div>
+      <div class="row-item">
+        <span>🚧 16-Pax Spillover Pause Gate (Protects 1.50m Footpath)</span>
+        <button class="btn toggle-on" id="tog-pausegate" onclick="toggleGuardrail('pauseGate', 'tog-pausegate')">ON</button>
+      </div>
+      <div class="row-item">
+        <span>📜 Excise QR Guardrail (1 Flight/QR · Bar-Poured · No Takeaway)</span>
+        <button class="btn toggle-on" id="tog-excise" onclick="toggleGuardrail('exciseGuard', 'tog-excise')">ON</button>
+      </div>
+      <div class="row-item">
+        <span>🧩 Smart 60-Seat Communal Bench Packing</span>
+        <button class="btn toggle-on" id="tog-smartpack" onclick="toggleGuardrail('smartPack', 'tog-smartpack')">ON</button>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <div class="section-title">Evidence Classification Log (Perplexity + Field Inputs)</div>
+      <table class="mini-tbl">
+        <thead>
+          <tr><th>Item / Rule</th><th>Value / Clause</th><th>Tag</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>MH BRL 1966 & Form E / FL-III</td>
+            <td>Red-ink plan (≥10 m² permit, ≥25 m² rest.); FL/BR-II separate for sealed bottles</td>
+            <td><span class="tag-verified">VERIFIED</span></td>
+          </tr>
+          <tr>
+            <td>Mumbai Fire Brigade Rule</td>
+            <td>≥1.0 m unobstructed internal passage from entrance to exit/rear wall</td>
+            <td><span class="tag-verified">VERIFIED</span></td>
+          </tr>
+          <tr>
+            <td>MCGM Footpath Policy (2023)</td>
+            <td>0.50 m Dead Zone + ≥1.50 m clear End-User pedestrian zone</td>
+            <td><span class="tag-verified">VERIFIED</span></td>
+          </tr>
+          <tr>
+            <td>Knocksense Khar Menu Obs.</td>
+            <td>180ml ₹200 · 330ml ₹300 · 500ml Mug ₹330 · House Fries ₹350 (historical)</td>
+            <td><span class="tag-verified">VERIFIED</span></td>
+          </tr>
+          <tr>
+            <td>De Vries et al. (2018) JOM</td>
+            <td>94,404-guest Indian restaurant study: coarse wait info spikes reneging</td>
+            <td><span class="tag-verified">VERIFIED</span></td>
+          </tr>
+          <tr>
+            <td>GF Road No. 3 60-Seat Plan</td>
+            <td>38 indoor + 6 bar + 16 patio seats; 16-pax foyer lounge proposal</td>
+            <td><span class="tag-input">INPUT</span></td>
+          </tr>
+          <tr>
+            <td>100-Run EBITDA & Breach %</td>
+            <td>Scen 1: ₹1.84L (78% breach) → Scen 3: ₹2.89L (0% breach)</td>
+            <td><span class="tag-sim">SIMULATED</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DRAWER 6: CLICK-TO-INSPECT OBJECT / GUEST CARD -->
+  <div class="drawer-window" id="drawer-inspector">
+    <div class="drawer-header">
+      <h3 id="insp-title">🔍 Spatial & Agent Inspector</h3>
+      <button class="close-x" onclick="closeAllDrawers()">✕</button>
+    </div>
+    <div id="insp-body" style="font-size:12px;line-height:1.5;color:#e2e8f0;"></div>
+  </div>
+
+  <script>
+  (function() {
+    "use strict";
+
+    // =========================================================================
+    // 1. STATE, CALIBRATED DATA & SCENARIO CONFIGURATION
+    // =========================================================================
+    const STATE = {
+      scenario: 2, // 1 = Baseline, 2 = FL-III Lounge + Kiosk, 3 = Full Twin + Smart Packing
+      lens: 'normal', // normal, safety, mood, profit
+      playing: true,
+      speed: 1,
+      simMinutes: 20 * 60 + 15, // Starts Saturday 20:15 peak
+      miMatch: false,
+      monsoon: false,
+      showLabels: true,
+      orthoMode: true,
+      snapIndex: 0,
+      emergencyClearTimer: 0,
+      guardrails: {
+        softTimer: true,
+        pauseGate: true,
+        exciseGuard: true,
+        smartPack: true
+      },
+      // Live metrics
+      arrivedGroups: 64,
+      seatedGroups: 56,
+      renegedGroups: 4,
+      loungeOrders: 28,
+      vipPartyId: null,
+      selectedObject: null,
+      smsTemplate: 'checkin'
+    };
+
+    const TAP_DATA = [
+      { id: 1, name: "Alphonso Mead", style: "Fruit Mead · 6.5% ABV", highCarb: false, liters: 23.4, backup: 3, sold: 68 },
+      { id: 2, name: "Oatmeal Stout", style: "Dark Ale · 5.2% ABV", highCarb: false, liters: 25.8, backup: 3, sold: 42 },
+      { id: 3, name: "Indian Pale Ale", style: "Hoppy IPA · 6.2% ABV", highCarb: false, liters: 21.0, backup: 3, sold: 59 },
+      { id: 4, name: "Hefeweizen", style: "German Wheat · 5.0% ABV", highCarb: false, liters: 24.5, backup: 2, sold: 51 },
+      { id: 5, name: "Rauchbier", style: "Smoked Lager · 5.4% ABV", highCarb: false, liters: 27.1, backup: 2, sold: 29 },
+      { id: 6, name: "Crisp Apple Cider", style: "High-Carb · 5.0% ABV (17s)", highCarb: true, liters: 18.6, backup: 2, sold: 84 },
+      { id: 7, name: "Belgian Witbier", style: "High-Carb · 4.8% ABV (17s)", highCarb: true, liters: 20.2, backup: 1, sold: 73 },
+      { id: 8, name: "Strawberry Cider", style: "Seasonal High-Carb · 4.9% (17s)", highCarb: true, liters: 19.4, backup: 1, sold: 61 }
+    ];
+
+    const ARCHETYPES = [
+      { key: 'craft', name: 'Craft Beer & Mead Lover', color: 0x10b981, patience: 26, dwell: 85, tasterProb: 0.85, foodProb: 0.70, thought: 'Loving this 180ml Alphonso Mead taster in the foyer lounge!' },
+      { key: 'mugclub', name: 'Mug Club VIP (RFID 4s)', color: 0x38bdf8, patience: 30, dwell: 95, tasterProb: 0.75, foodProb: 0.75, thought: '4-sec Mug Club QR check-in! 500ml pour @ ₹330 locked.' },
+      { key: 'gamer', name: 'Board-Game / Match Lingerer', color: 0xf59e0b, patience: 28, dwell: 125, tasterProb: 0.65, foodProb: 0.80, thought: 'Grabbed Catan from the right wall — main floor stays calm!' },
+      { key: 'foodie', name: 'Khar Late-Night Foodie', color: 0xc084fc, patience: 24, dwell: 80, tasterProb: 0.60, foodProb: 0.92, thought: 'House Fries (₹350) + Radhaballabhi ordered via Express Kiosk!' },
+      { key: 'impatient', name: 'Impatient / Rowdy Group', color: 0xef4444, patience: 14, dwell: 70, tasterProb: 0.50, foodProb: 0.55, thought: 'Good thing we got an indoor lounge seat instead of waiting on Road No. 3!' }
+    ];
+
+    const SMS_TEMPLATES = {
+      checkin: (name) => `🍺 Hey ${name}! You're #3 in queue at Doolally Khar (Est. wait: 14 min). Step into our indoor FL-III Wait Lounge for a ₹200 180ml taster & ₹350 House Fries while you wait!`,
+      taster: (name) => `🥂 Cheers ${name}! Your 180ml Alphonso Mead taster & House Fries are freshly poured from the 8-tap bar and arriving at Lounge Spot B2.`,
+      ready: (name) => `✅ Table Ready, ${name}! Your communal bench inside Doolally Khar is set. Your lounge taster tab has been auto-transferred to your table POS.`,
+      hold: (name) => `📲 Hi ${name}! Our 16-pax indoor lounge is at safe fire-exit capacity. Grab a coffee nearby on Road No. 3—we'll ping you 8 mins before your table opens!`
+    };
+
+    // =========================================================================
+    // 2. THREE.JS SCENE, CAMERAS & BUILT-IN ORBIT/PAN/ZOOM CONTROLS
+    // =========================================================================
+    let scene, renderer, orthoCam, perspCam, activeCam;
+    let camTarget = new THREE.Vector3(0, 0.4, 0.5);
+    let camAzimuth = Math.PI / 4;     // 45 deg isometric angle
+    let camElevation = 0.76;          // ~43.5 deg elevation
+    let camZoom = 26;                 // Ortho frustum half-height / Persp dist
+    let isDragging = false, isPanning = false, prevPointer = { x: 0, y: 0 };
+
+    // Dynamic 3D collections
+    const seats = [];        // 60 total seats: 38 indoor + 6 bar + 16 patio
+    const loungeSpots = [];  // 16 indoor wait lounge positions
+    const parties = [];      // Active guest groups
+    let brunoDog = null;
+    let loungeRunner = null;
+    let rainSystem = null;
+    let dynamicTableProps = [];
+    const lensMeshes = { safety: [], mood: [], profit: [] };
+    const foldableLoungeObjects = [];
+    const worldLabelAnchors = [];
+    const raycastTargets = [];
+
+    function showToast(msg) {
+      const el = document.getElementById('toast-banner');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 2800);
+    }
+
+    function makeCanvasTexture(width, height, drawFn) {
+      const c = document.createElement('canvas');
+      c.width = width; c.height = height;
+      const ctx = c.getContext('2d');
+      drawFn(ctx, width, height);
+      const tex = new THREE.CanvasTexture(c);
+      tex.anisotropy = 4;
+      return tex;
+    }
+
+    function updateCameraTransform() {
+      const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+      const dist = 48;
+      const x = camTarget.x + dist * Math.cos(camElevation) * Math.sin(camAzimuth);
+      const y = camTarget.y + dist * Math.sin(camElevation);
+      const z = camTarget.z + dist * Math.cos(camElevation) * Math.cos(camAzimuth);
+
+      orthoCam.left = -camZoom * aspect;
+      orthoCam.right = camZoom * aspect;
+      orthoCam.top = camZoom;
+      orthoCam.bottom = -camZoom;
+      orthoCam.position.set(x, y, z);
+      orthoCam.lookAt(camTarget);
+      orthoCam.updateProjectionMatrix();
+
+      const pDist = camZoom * 1.45;
+      perspCam.aspect = aspect;
+      perspCam.position.set(
+        camTarget.x + pDist * Math.cos(camElevation) * Math.sin(camAzimuth),
+        camTarget.y + pDist * Math.sin(camElevation),
+        camTarget.z + pDist * Math.cos(camElevation) * Math.cos(camAzimuth)
+      );
+      perspCam.lookAt(camTarget);
+      perspCam.updateProjectionMatrix();
+    }
+
+    function setupControls(dom) {
+      dom.addEventListener('contextmenu', e => e.preventDefault());
+      dom.addEventListener('pointerdown', e => {
+        isDragging = true;
+        isPanning = (e.button === 2 || e.button === 1 || e.shiftKey);
+        prevPointer = { x: e.clientX, y: e.clientY };
+        dom._downPos = { x: e.clientX, y: e.clientY, time: performance.now() };
+      });
+      window.addEventListener('pointermove', e => {
+        if (!isDragging) return;
+        const dx = e.clientX - prevPointer.x;
+        const dy = e.clientY - prevPointer.y;
+        prevPointer = { x: e.clientX, y: e.clientY };
+        if (isPanning) {
+          const panScale = camZoom * 0.0022;
+          const right = new THREE.Vector3(Math.cos(camAzimuth), 0, -Math.sin(camAzimuth));
+          const forward = new THREE.Vector3(-Math.sin(camAzimuth), 0, -Math.cos(camAzimuth));
+          camTarget.addScaledVector(right, -dx * panScale);
+          camTarget.addScaledVector(forward, dy * panScale);
+          camTarget.x = Math.max(-14, Math.min(14, camTarget.x));
+          camTarget.z = Math.max(-10, Math.min(12, camTarget.z));
+        } else {
+          camAzimuth -= dx * 0.0065;
+          camElevation = Math.max(0.28, Math.min(1.38, camElevation + dy * 0.0055));
+        }
+        updateCameraTransform();
+      });
+      window.addEventListener('pointerup', e => {
+        if (isDragging && dom._downPos) {
+          const moveDist = Math.hypot(e.clientX - dom._downPos.x, e.clientY - dom._downPos.y);
+          if (moveDist < 5 && e.button === 0) {
+            handleSceneClick(e.clientX, e.clientY);
+          }
+        }
+        isDragging = false;
+      });
+      dom.addEventListener('wheel', e => {
+        e.preventDefault();
+        camZoom = Math.max(10, Math.min(44, camZoom + e.deltaY * 0.015));
+        updateCameraTransform();
+      }, { passive: false });
+    }
+
+    // =========================================================================
+    // 3. EXACT GROUND-FLOOR ARCHITECTURAL BUILDER (ROAD NO. 3, KHAR WEST)
+    // =========================================================================
+    function buildTaproomArchitecture() {
+      // Lighting
+      const amb = new THREE.AmbientLight(0xfff4e6, 0.72);
+      scene.add(amb);
+
+      const sun = new THREE.DirectionalLight(0xfff1d6, 0.92);
+      sun.position.set(18, 32, 22);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.camera.near = 2;
+      sun.shadow.camera.far = 85;
+      const d = 24;
+      sun.shadow.camera.left = -d; sun.shadow.camera.right = d;
+      sun.shadow.camera.top = d; sun.shadow.camera.bottom = -d;
+      scene.add(sun);
+
+      const warmBarLight = new THREE.PointLight(0xffb74d, 0.9, 18);
+      warmBarLight.position.set(-0.5, 4.2, -6.5);
+      scene.add(warmBarLight);
+
+      const diningLight = new THREE.PointLight(0xffcc80, 0.7, 22);
+      diningLight.position.set(6.5, 4.5, 0.5);
+      scene.add(diningLight);
+
+      // Base Ground Slab
+      const baseSlab = new THREE.Mesh(
+        new THREE.BoxGeometry(31, 0.5, 25),
+        new THREE.MeshStandardMaterial({ color: 0x1e2430, roughness: 0.9 })
+      );
+      baseSlab.position.set(0, -0.26, 1.0);
+      baseSlab.receiveShadow = true;
+      scene.add(baseSlab);
+
+      // -----------------------------------------------------------------------
+      // A. SOUTH STREET FRONTAGE: ROAD NO. 3, KHAR + MCGM 0.5m/1.5m FOOTPATH
+      // -----------------------------------------------------------------------
+      const roadTex = makeCanvasTexture(1024, 256, (ctx, w, h) => {
+        ctx.fillStyle = '#252a34';
+        ctx.fillRect(0, 0, w, h);
+        // Subtle asphalt grain
+        for (let i = 0; i < 3000; i++) {
+          ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.08)';
+          ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+        }
+        // Dashed road center markings
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 6;
+        ctx.setLineDash([36, 28]);
+        ctx.beginPath(); ctx.moveTo(20, h * 0.52); ctx.lineTo(w - 20, h * 0.52); ctx.stroke();
+        ctx.setLineDash([]);
+        // Street Title
+        ctx.fillStyle = 'rgba(248, 250, 252, 0.85)';
+        ctx.font = '800 34px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('ROAD NO. 3, KHAR WEST', w * 0.5, h * 0.84);
+      });
+      const roadMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(30, 0.12, 3.6),
+        new THREE.MeshStandardMaterial({ map: roadTex, roughness: 0.88 })
+      );
+      roadMesh.position.set(0, -0.05, 11.3);
+      roadMesh.receiveShadow = true;
+      scene.add(roadMesh);
+
+      // Footpath (Z = +7.5 to +9.5 = 2.0m total: 0.50m Dead Zone + 1.50m End-User Zone)
+      const sidewalkTex = makeCanvasTexture(1024, 128, (ctx, w, h) => {
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(0, 0, w, h);
+        // 0.50m Dead Zone strip (top 25% of sidewalk next to building line)
+        ctx.fillStyle = '#788496';
+        ctx.fillRect(0, 0, w, h * 0.25);
+        // Paver grid
+        ctx.strokeStyle = 'rgba(30,41,59,0.22)';
+        ctx.lineWidth = 2;
+        for (let x = 0; x < w; x += 32) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        ctx.strokeStyle = '#f59e0b';
+        ctx.setLineDash([12, 10]);
+        ctx.beginPath(); ctx.moveTo(0, h * 0.25); ctx.lineTo(w, h * 0.25); ctx.stroke();
+      });
+      const sidewalk = new THREE.Mesh(
+        new THREE.BoxGeometry(30, 0.16, 2.0),
+        new THREE.MeshStandardMaterial({ map: sidewalkTex, roughness: 0.82 })
+      );
+      sidewalk.position.set(0, 0.01, 8.5);
+      sidewalk.receiveShadow = true;
+      scene.add(sidewalk);
+
+      // Entrance Mat (Bottom-left of center foyer: X = -2.7, Z = 7.45)
+      const matTex = makeCanvasTexture(256, 128, (ctx, w, h) => {
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(8, 8, w - 16, h - 16);
+        ctx.fillStyle = '#fef3c7';
+        ctx.font = '800 32px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('ENTRANCE', w / 2, h / 2 + 11);
+      });
+      const entranceMat = new THREE.Mesh(
+        new THREE.BoxGeometry(2.6, 0.04, 1.1),
+        new THREE.MeshStandardMaterial({ map: matTex })
+      );
+      entranceMat.position.set(-2.7, 0.06, 7.35);
+      scene.add(entranceMat);
+
+      // Streetlamps & Corner Foliage Bushes
+      [-13.8, -5.6, 2.5, 13.8].forEach(lx => {
+        const pole = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.07, 0.1, 3.6, 10),
+          new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 })
+        );
+        pole.position.set(lx, 1.8, 9.35);
+        pole.castShadow = true;
+        scene.add(pole);
+
+        const bulb = new THREE.Mesh(
+          new THREE.SphereGeometry(0.22, 12, 12),
+          new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xf59e0b, emissiveIntensity: 0.9 })
+        );
+        bulb.position.set(lx, 3.65, 9.35);
+        scene.add(bulb);
+      });
+
+      [[-13.5, 8.2], [-6.2, 8.2], [2.4, 8.2], [13.2, 8.2]].forEach(([bx, bz]) => {
+        addPlanterBush(bx, 0.1, bz, 0.65);
+      });
+
+      // -----------------------------------------------------------------------
+      // B. LEFT (WEST) WING: WASHROOMS (TOP-LEFT) & OUTDOOR PATIO (LOWER-LEFT)
+      // -----------------------------------------------------------------------
+      // Top-Left Washrooms (X = -14.0 to -5.5, Z = -9.5 to -4.2)
+      const washFloor = new THREE.Mesh(
+        new THREE.BoxGeometry(8.5, 0.12, 5.3),
+        new THREE.MeshStandardMaterial({ color: 0xfce7f3, roughness: 0.5 })
+      );
+      washFloor.position.set(-9.75, 0.04, -6.85);
+      washFloor.receiveShadow = true;
+      scene.add(washFloor);
+
+      // Pink-bordered perimeter walls for Washrooms
+      const pinkWallMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.55 });
+      addWall(-9.75, 1.3, -9.5, 8.6, 2.6, 0.22, pinkWallMat); // North wall
+      addWall(-14.0, 1.3, -6.85, 0.22, 2.6, 5.3, pinkWallMat); // West wall
+      addWall(-5.5, 1.3, -6.85, 0.22, 2.6, 5.3, pinkWallMat);  // East wall
+      addWall(-11.2, 1.3, -4.2, 5.6, 2.6, 0.22, pinkWallMat);  // South wall left
+      addWall(-6.3, 1.3, -4.2, 1.6, 2.6, 0.22, pinkWallMat);   // South wall right (door gap at X = -7.7)
+
+      // Cubicle dividers & fixtures inside Washrooms
+      addWall(-11.4, 1.0, -7.8, 0.12, 2.0, 3.2, pinkWallMat);
+      addWall(-9.0, 1.0, -7.8, 0.12, 2.0, 3.2, pinkWallMat);
+      // Washbasin counter
+      const vanity = new THREE.Mesh(
+        new THREE.BoxGeometry(2.4, 0.85, 0.65),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+      );
+      vanity.position.set(-7.1, 0.48, -8.9);
+      scene.add(vanity);
+      addPlanterBush(-13.1, 0.1, -5.0, 0.45);
+      addZoneTarget(-9.75, -6.85, 8.2, 5.0, 'Washrooms (Top-Left Wing)',
+        'Pink-bordered FL-III compliant restaurant washrooms with dual cubicles, vanity basins, and unobstructed access.');
+
+      // Outdoor Seating Patio (X = -14.0 to -5.5, Z = -4.2 to +7.5)
+      const deckTex = makeCanvasTexture(512, 512, (ctx, w, h) => {
+        ctx.fillStyle = '#9a5b2b';
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = '#854d22';
+        for (let y = 0; y < h; y += 24) {
+          ctx.fillRect(0, y, w, 4);
+        }
+      });
+      const patioDeck = new THREE.Mesh(
+        new THREE.BoxGeometry(8.5, 0.14, 11.7),
+        new THREE.MeshStandardMaterial({ map: deckTex, roughness: 0.72 })
+      );
+      patioDeck.position.set(-9.75, 0.05, 1.65);
+      patioDeck.receiveShadow = true;
+      scene.add(patioDeck);
+
+      // Low perimeter railing + 4 lush planter booths along left wall
+      const woodWallMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.7 });
+      addWall(-14.0, 0.65, 1.65, 0.22, 1.3, 11.7, woodWallMat);
+      addWall(-9.75, 0.55, 7.5, 8.5, 1.1, 0.22, woodWallMat);
+      // Dividing wall between Patio and Entry Foyer with glass doorway at Z = +1.5
+      addWall(-5.5, 1.2, -1.8, 0.2, 2.4, 4.6, woodWallMat);
+      addWall(-5.5, 1.2, 5.2, 0.2, 2.4, 4.6, woodWallMat);
+
+      [-2.5, 0.2, 3.0, 5.8].forEach(pz => {
+        addPlanterBush(-13.2, 0.14, pz, 0.55);
+      });
+
+      // Four 4-Seater Patio Tables = 16 Outdoor Seats
+      const patioCoords = [
+        [-11.2, -1.6], [-7.8, -1.6],
+        [-11.2, 4.2],  [-7.8, 4.2]
+      ];
+      patioCoords.forEach(([tx, tz], idx) => {
+        createDiningTableWithSeats(tx, 0.12, tz, 1.65, 1.25, 4, 'patio', `Patio Table P${idx + 1} (4 Seats)`);
+      });
+
+      // -----------------------------------------------------------------------
+      // C. CENTER ENTRY FOYER, YELLOW 3-STEP THRESHOLD & PROPOSED FL-III LOUNGE
+      // -----------------------------------------------------------------------
+      const foyerFloor = new THREE.Mesh(
+        new THREE.BoxGeometry(7.5, 0.12, 6.3),
+        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.65 })
+      );
+      foyerFloor.position.set(-1.75, 0.04, 4.35);
+      foyerFloor.receiveShadow = true;
+      scene.add(foyerFloor);
+
+      addPlanterBush(-4.9, 0.1, 6.8, 0.45);
+      addPlanterBush(1.4, 0.1, 6.8, 0.45);
+
+      // Yellow 3-Step Threshold leading up into Indoor Dining Hall (Z = +0.3 to +1.2)
+      const stepMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.45 });
+      for (let s = 0; s < 3; s++) {
+        const step = new THREE.Mesh(
+          new THREE.BoxGeometry(7.5, 0.12 * (s + 1), 0.32),
+          stepMat
+        );
+        step.position.set(-1.75, 0.06 * (s + 1), 1.05 - s * 0.30);
+        step.castShadow = true;
+        step.receiveShadow = true;
+        scene.add(step);
+      }
+
+      // Proposed FL-III / Form E Red-Ink Permit Perimeter in Entry Foyer
+      const redLineMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+      const rl1 = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.02, 0.06), redLineMat); rl1.position.set(0.1, 0.11, 2.0);
+      const rl2 = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.02, 0.06), redLineMat); rl2.position.set(0.1, 0.11, 6.8);
+      const rl3 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 4.8), redLineMat); rl3.position.set(-1.6, 0.11, 4.4);
+      const rl4 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 4.8), redLineMat); rl4.position.set(1.8, 0.11, 4.4);
+      scene.add(rl1, rl2, rl3, rl4);
+
+      // Order-Only Express Kiosk Totem + POS Terminal (no beer dispensing here!)
+      const kioskGroup = new THREE.Group();
+      const kioskBody = new THREE.Mesh(
+        new THREE.BoxGeometry(0.85, 1.35, 0.55),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.4, roughness: 0.3 })
+      );
+      kioskBody.position.y = 0.68;
+      kioskBody.castShadow = true;
+      const kioskScreen = new THREE.Mesh(
+        new THREE.BoxGeometry(0.72, 0.52, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.85 })
+      );
+      kioskScreen.position.set(0, 1.02, 0.27);
+      const kioskHeader = new THREE.Mesh(
+        new THREE.BoxGeometry(0.88, 0.18, 0.58),
+        new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 0.4 })
+      );
+      kioskHeader.position.y = 1.42;
+      kioskGroup.add(kioskBody, kioskScreen, kioskHeader);
+      kioskGroup.position.set(0.95, 0.1, 5.9);
+      kioskGroup.userData.homePos = kioskGroup.position.clone();
+      scene.add(kioskGroup);
+      foldableLoungeObjects.push(kioskGroup);
+
+      addZoneTarget(0.2, 4.4, 3.3, 4.6, 'Proposed FL-III Wait Lounge & Express Kiosk',
+        '16-pax capped indoor waiting lounge inside Entry Foyer. Order-only QR/RFID kiosk (4s Mug Club check-in); all 180ml tasters (₹200) are poured from the 8-tap bar under bar staff visual sightline, paired with House Fries (₹350).');
+
+      // 16 Lounge Spots (4 rows x 4 spots inside X = -1.3 to +1.4, Z = 2.4 to 5.4)
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          const lx = -1.25 + c * 0.82;
+          const lz = 2.45 + r * 0.82;
+          const stool = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.22, 0.22, 0.42, 12),
+            new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 })
+          );
+          stool.position.set(lx, 0.31, lz);
+          stool.castShadow = true;
+          stool.userData.homePos = stool.position.clone();
+          scene.add(stool);
+          foldableLoungeObjects.push(stool);
+          loungeSpots.push({ x: lx, y: 0.1, z: lz, occupiedBy: null, mesh: stool });
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // D. INDOOR DINING HALL (ELEVATED Y = 0.36), BAR (8 TAPS), KITCHEN & GAMES
+      // -----------------------------------------------------------------------
+      const indoorFloor = new THREE.Mesh(
+        new THREE.BoxGeometry(19.5, 0.36, 10.0),
+        new THREE.MeshStandardMaterial({ color: 0x332b24, roughness: 0.72 })
+      );
+      indoorFloor.position.set(4.25, 0.18, -4.5);
+      indoorFloor.receiveShadow = true;
+      scene.add(indoorFloor);
+
+      // Lower-Right Indoor Extension (X = +2.0 to +14.0, Z = +0.5 to +7.5)
+      const indoorRightFloor = new THREE.Mesh(
+        new THREE.BoxGeometry(12.0, 0.36, 7.0),
+        new THREE.MeshStandardMaterial({ color: 0x332b24, roughness: 0.72 })
+      );
+      indoorRightFloor.position.set(8.0, 0.18, 4.0);
+      indoorRightFloor.receiveShadow = true;
+      scene.add(indoorRightFloor);
+
+      // Outer Perimeter Walls (North & East)
+      const brickMat = new THREE.MeshStandardMaterial({ color: 0x573b2c, roughness: 0.8 });
+      addWall(4.25, 1.7, -9.5, 19.6, 3.0, 0.25, brickMat); // North Back Wall
+      addWall(14.0, 1.7, -1.0, 0.25, 3.0, 17.0, brickMat); // East Right Wall
+      addWall(8.0, 1.7, 7.5, 12.0, 3.0, 0.25, brickMat);   // South-East Wall
+      // Divider between Foyer and Lower-Right Dining
+      addWall(2.0, 1.2, 4.2, 0.22, 1.8, 6.6, woodWallMat);
+
+      // TOP (NORTH) HONEY-OAK BAR COUNTER + 8 GLOWING BRASS TAPS + 6 STOOLS
+      const barCounter = new THREE.Mesh(
+        new THREE.BoxGeometry(8.8, 1.08, 1.15),
+        new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.45 })
+      );
+      barCounter.position.set(-0.6, 0.90, -6.2);
+      barCounter.castShadow = true;
+      barCounter.receiveShadow = true;
+      scene.add(barCounter);
+
+      const barTop = new THREE.Mesh(
+        new THREE.BoxGeometry(9.0, 0.08, 1.3),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.25, metalness: 0.3 })
+      );
+      barTop.position.set(-0.6, 1.46, -6.2);
+      scene.add(barTop);
+
+      // Back-bar shelf & conditioning tanks
+      const backBar = new THREE.Mesh(
+        new THREE.BoxGeometry(8.6, 2.1, 0.6),
+        new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.6 })
+      );
+      backBar.position.set(-0.6, 1.4, -8.9);
+      scene.add(backBar);
+
+      // 8 Glowing Brass Taps on Bar Counter
+      for (let t = 0; t < 8; t++) {
+        const tx = -3.8 + t * 0.92;
+        const tower = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.08, 0.1, 0.48, 10),
+          new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.2, emissive: t >= 5 ? 0x38bdf8 : 0xf59e0b, emissiveIntensity: 0.35 })
+        );
+        tower.position.set(tx, 1.72, -6.2);
+        scene.add(tower);
+      }
+
+      // 6 Round Wooden Bar Stools along Z = -5.15
+      for (let s = 0; s < 6; s++) {
+        const sx = -3.6 + s * 1.2;
+        const stoolMesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.24, 0.20, 0.72, 12),
+          new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 })
+        );
+        stoolMesh.position.set(sx, 0.72, -5.15);
+        stoolMesh.castShadow = true;
+        scene.add(stoolMesh);
+        seats.push({
+          id: `BAR-${s + 1}`, zone: 'bar', x: sx, y: 0.36, z: -5.15,
+          rotY: Math.PI, occupiedBy: null, tableId: 'BAR', mesh: stoolMesh
+        });
+      }
+      addZoneTarget(-0.6, -6.4, 8.8, 2.6, '8-Tap Craft Bar (6 Bar Stools)',
+        'Taps 1–5: Standard Ales/Meads (16s pour+rinse). Taps 6–8: High-carb Ciders/Witbier (17s 2-stage pour + 4-min keg swap every 75 pours). Direct visual sightline to Entry Foyer Lounge.');
+
+      // TOP-RIGHT ENCLOSED KITCHEN (X = +4.6 to +13.7, Z = -9.3 to -5.5)
+      const kitchenFloor = new THREE.Mesh(
+        new THREE.BoxGeometry(9.0, 0.04, 3.8),
+        new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.4 })
+      );
+      kitchenFloor.position.set(9.15, 0.38, -7.4);
+      scene.add(kitchenFloor);
+
+      // Kitchen partition wall with glass service pass
+      addWall(4.6, 1.5, -7.4, 0.2, 2.4, 3.8, new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+      addWall(9.15, 0.9, -5.5, 9.0, 1.1, 0.25, new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+      // Double stainless steel fridge & stove range
+      const fridge = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6, 2.0, 0.9),
+        new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8, roughness: 0.2 })
+      );
+      fridge.position.set(12.6, 1.38, -8.7);
+      scene.add(fridge);
+
+      const stove = new THREE.Mesh(
+        new THREE.BoxGeometry(2.6, 0.9, 0.9),
+        new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.3 })
+      );
+      stove.position.set(8.2, 0.83, -8.7);
+      scene.add(stove);
+
+      addZoneTarget(9.15, -7.4, 8.8, 3.6, 'Enclosed Kitchen & Service Pass',
+        'Prepares Khar starters (House Fries ₹350, Radhaballabhi ₹333, Khaw Swe ₹429). Food attach rate: 0.72 items/pour at 32% COGS.');
+
+      // INDOOR COMMUNAL TABLES: UPPER ROW (6 + 10 + 6 = 22 SEATS)
+      createDiningTableWithSeats(-2.8, 0.36, -2.5, 2.4, 1.25, 6, 'indoor', 'Communal Table T1 (6 Seats)');
+      createDiningTableWithSeats(2.6, 0.36, -2.5, 4.0, 1.35, 10, 'indoor', 'Grand Communal Table T2 (10 Seats)');
+      createDiningTableWithSeats(8.4, 0.36, -2.5, 2.4, 1.25, 6, 'indoor', 'Communal Table T3 (6 Seats)');
+
+      // LOWER-RIGHT 2x2 GRID OF 4-SEATERS (4 x 4 = 16 SEATS) -> 22 + 16 = 38 INDOOR SEATS!
+      const lrCoords = [
+        [5.2, 2.0], [9.8, 2.0],
+        [5.2, 5.2], [9.8, 5.2]
+      ];
+      lrCoords.forEach(([tx, tz], idx) => {
+        createDiningTableWithSeats(tx, 0.36, tz, 1.75, 1.25, 4, 'indoor', `Indoor Table T${idx + 4} (4 Seats)`);
+      });
+
+      // FAR-RIGHT BOARD GAMES & BOOKS WALL (X = +13.4, Z = -4.2 to +6.5)
+      const shelfFrame = new THREE.Mesh(
+        new THREE.BoxGeometry(0.65, 2.3, 10.4),
+        new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.65 })
+      );
+      shelfFrame.position.set(13.45, 1.5, 1.1);
+      shelfFrame.castShadow = true;
+      scene.add(shelfFrame);
+
+      const gameColors = [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b, 0xa855f7, 0xec4899];
+      for (let b = 0; b < 28; b++) {
+        const box = new THREE.Mesh(
+          new THREE.BoxGeometry(0.45, 0.24, 0.32),
+          new THREE.MeshStandardMaterial({ color: gameColors[b % gameColors.length], roughness: 0.5 })
+        );
+        box.position.set(13.3, 0.8 + (b % 4) * 0.45, -3.5 + Math.floor(b / 4) * 1.45);
+        scene.add(box);
+      }
+      addZoneTarget(13.2, 1.1, 1.2, 10.2, 'Board Games & Books Wall (80+ Games)',
+        'Doolally signature library (Catan, Codenames, Taboo). Drives 95–140 min social dwell times; Wait Lounge absorbs door rush so games stay undisturbed.');
+
+      // -----------------------------------------------------------------------
+      // E. SIMCITY LENS 3D OVERLAY MESHES (SEAT PADS, FIRE CORRIDOR, PROFIT PRISMS)
+      // -----------------------------------------------------------------------
+      // 1. 60 Seat Occupancy Pads (Safety Lens)
+      seats.forEach(s => {
+        const pad = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.32, 0.32, 0.06, 16),
+          new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.85 })
+        );
+        pad.position.set(s.x, s.y + 0.05, s.z);
+        pad.visible = false;
+        scene.add(pad);
+        s.safetyPad = pad;
+        lensMeshes.safety.push(pad);
+      });
+
+      // 2. 1.0m Mumbai Fire Brigade Internal Exit Corridor Ribbon
+      const fireCorridor = new THREE.Mesh(
+        new THREE.BoxGeometry(1.0, 0.05, 12.2),
+        new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.48 })
+      );
+      fireCorridor.position.set(-2.7, 0.40, 1.4);
+      fireCorridor.visible = false;
+      scene.add(fireCorridor);
+      lensMeshes.safety.push(fireCorridor);
+      lensMeshes.fireCorridor = fireCorridor;
+
+      // 3. 1.50m MCGM Footpath End-User Zone Ribbon
+      const footpathZone = new THREE.Mesh(
+        new THREE.BoxGeometry(29.6, 0.05, 1.5),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45 })
+      );
+      footpathZone.position.set(0, 0.11, 8.75);
+      footpathZone.visible = false;
+      scene.add(footpathZone);
+      lensMeshes.safety.push(footpathZone);
+      lensMeshes.footpathZone = footpathZone;
+
+      // 4. Bar-to-Lounge Visual Sightline Beam (Excise Supervision Counter)
+      const sightBeam = new THREE.Mesh(
+        new THREE.BoxGeometry(0.14, 0.05, 10.2),
+        new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.65 })
+      );
+      sightBeam.position.set(-0.4, 0.45, -1.0);
+      sightBeam.visible = false;
+      scene.add(sightBeam);
+      lensMeshes.safety.push(sightBeam);
+
+      // 5. Profit Zones Translucent 3D Prisms (Profit Lens)
+      const profitConfigs = [
+        { x: 0.1, z: 4.4, w: 3.3, d: 4.6, h: 2.2, color: 0xf59e0b, label: 'FL-III Kiosk + Lounge: +₹14,400/hr (85.6% GM)' },
+        { x: 3.5, z: 0.5, w: 12.5, d: 9.5, h: 2.8, color: 0x10b981, label: 'Communal Dining (38 Seats): ₹34,500/hr (76% GM)' },
+        { x: -0.6, z: -6.2, w: 8.8, d: 2.2, h: 2.5, color: 0x38bdf8, label: '8-Tap Craft Bar (6 Stools): ₹18,200/hr (84% GM)' },
+        { x: -9.75, z: 1.65, w: 8.0, d: 11.0, h: 1.8, color: 0xa855f7, label: 'Outdoor Patio (16 Seats): ₹11,800/hr' }
+      ];
+      profitConfigs.forEach(pc => {
+        const prism = new THREE.Mesh(
+          new THREE.BoxGeometry(pc.w, pc.h, pc.d),
+          new THREE.MeshBasicMaterial({ color: pc.color, transparent: true, opacity: 0.24, depthWrite: false })
+        );
+        prism.position.set(pc.x, 0.36 + pc.h / 2, pc.z);
+        prism.visible = false;
+        scene.add(prism);
+        lensMeshes.profit.push(prism);
+        worldLabelAnchors.push({ pos: new THREE.Vector3(pc.x, 0.36 + pc.h + 0.3, pc.z), text: pc.label, type: 'profit' });
+      });
+
+      // Zone Labels (Normal & Safety)
+      worldLabelAnchors.push(
+        { pos: new THREE.Vector3(-9.75, 2.9, -6.85), text: 'WASHROOMS', type: 'normal' },
+        { pos: new THREE.Vector3(-9.75, 1.6, 1.65), text: 'OUTDOOR SEATING (16)', type: 'normal' },
+        { pos: new THREE.Vector3(-0.2, 1.8, 4.4), text: 'ENTRY FOYER · FL-III LOUNGE (16)', type: 'normal' },
+        { pos: new THREE.Vector3(-0.6, 2.6, -6.4), text: 'BAR (8 TAPS · 6 STOOLS)', type: 'normal' },
+        { pos: new THREE.Vector3(9.15, 2.6, -7.4), text: 'KITCHEN', type: 'normal' },
+        { pos: new THREE.Vector3(4.2, 1.8, -2.5), text: 'INDOOR COMMUNAL (38 SEATS)', type: 'normal' },
+        { pos: new THREE.Vector3(13.1, 2.8, 1.1), text: 'BOARD GAMES & BOOKS', type: 'normal' },
+        { pos: new THREE.Vector3(-2.7, 0.9, 1.4), text: '1.0m FIRE EXIT CORRIDOR', type: 'safety' },
+        { pos: new THREE.Vector3(5.5, 0.6, 8.75), text: '1.50m MCGM FOOTPATH ZONE', type: 'safety' },
+        { pos: new THREE.Vector3(0.2, 1.5, 4.4), text: 'FL-III RED-INK ZONE (16 PAX)', type: 'safety' }
+      );
+
+      // -----------------------------------------------------------------------
+      // F. BRUNO THE GOLDEN RETRIEVER, LOUNGE RUNNER & MONSOON RAIN SYSTEM
+      // -----------------------------------------------------------------------
+      brunoDog = createBrunoDog();
+      scene.add(brunoDog);
+
+      loungeRunner = createHumanMesh(0xf59e0b, 0x0f172a, false, true);
+      loungeRunner.position.set(-0.4, 0.36, -4.5);
+      scene.add(loungeRunner);
+
+      // 3D Monsoon Rain Particles
+      const rainCount = 450;
+      const rainGeo = new THREE.BufferGeometry();
+      const rainPos = new Float32Array(rainCount * 3);
+      for (let i = 0; i < rainCount; i++) {
+        rainPos[i * 3] = (Math.random() - 0.5) * 30;
+        rainPos[i * 3 + 1] = Math.random() * 12;
+        rainPos[i * 3 + 2] = (Math.random() - 0.5) * 24;
+      }
+      rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+      rainSystem = new THREE.Points(
+        rainGeo,
+        new THREE.PointsMaterial({ color: 0x7dd3fc, size: 0.14, transparent: true, opacity: 0.72 })
+      );
+      rainSystem.visible = false;
+      scene.add(rainSystem);
+    }
+
+    function addWall(x, y, z, w, h, d, mat) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(x, y, z);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      scene.add(m);
+      return m;
+    }
+
+    function addPlanterBush(x, y, z, scale) {
+      const g = new THREE.Group();
+      const pot = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.38 * scale, 0.28 * scale, 0.45 * scale, 10),
+        new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.8 })
+      );
+      pot.position.y = 0.22 * scale;
+      const foliage = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.55 * scale, 1),
+        new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.7 })
+      );
+      foliage.position.y = 0.65 * scale;
+      foliage.castShadow = true;
+      g.add(pot, foliage);
+      g.position.set(x, y, z);
+      scene.add(g);
+    }
+
+    function addZoneTarget(x, z, w, d, title, desc) {
+      const hit = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.3, d),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      hit.position.set(x, 0.4, z);
+      hit.userData = { inspectType: 'zone', title, desc };
+      scene.add(hit);
+      raycastTargets.push(hit);
+    }
+
+    function createDiningTableWithSeats(tx, floorY, tz, w, d, seatCount, zone, label) {
+      const tableGroup = new THREE.Group();
+      const top = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.09, d),
+        new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.48 })
+      );
+      top.position.y = 0.74;
+      top.castShadow = true;
+      top.receiveShadow = true;
+      tableGroup.add(top);
+
+      // Table legs
+      [[-w * 0.4, -d * 0.35], [w * 0.4, -d * 0.35], [-w * 0.4, d * 0.35], [w * 0.4, d * 0.35]].forEach(([lx, lz]) => {
+        const leg = new THREE.Mesh(
+          new THREE.BoxGeometry(0.09, 0.74, 0.09),
+          new THREE.MeshStandardMaterial({ color: 0x451a03 })
+        );
+        leg.position.set(lx, 0.37, lz);
+        tableGroup.add(leg);
+      });
+
+      tableGroup.position.set(tx, floorY, tz);
+      tableGroup.userData = { inspectType: 'table', title: label, zone, seatCount };
+      scene.add(tableGroup);
+      raycastTargets.push(top);
+      top.userData = tableGroup.userData;
+
+      // Arrange seats evenly along North (-Z) and South (+Z) sides of communal bench/table
+      const perSide = seatCount / 2;
+      for (let side = 0; side < 2; side++) {
+        const zOff = side === 0 ? -(d / 2 + 0.38) : (d / 2 + 0.38);
+        const rotY = side === 0 ? 0 : Math.PI;
+        for (let i = 0; i < perSide; i++) {
+          const xOff = perSide === 1 ? 0 : -w * 0.38 + (i * (w * 0.76) / (perSide - 1));
+          const sx = tx + xOff;
+          const sz = tz + zOff;
+          const chair = new THREE.Mesh(
+            new THREE.BoxGeometry(0.42, 0.44, 0.42),
+            new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.6 })
+          );
+          chair.position.set(sx, floorY + 0.22, sz);
+          chair.castShadow = true;
+          scene.add(chair);
+
+          seats.push({
+            id: `${label}-S${side * perSide + i + 1}`,
+            zone, x: sx, y: floorY, z: sz, rotY,
+            occupiedBy: null, tableId: label, tableCenter: { x: tx, y: floorY + 0.79, z: tz },
+            mesh: chair
+          });
+        }
+      }
+    }
+
+    function createHumanMesh(shirtColor, pantsColor, isVip, isStaff) {
+      const g = new THREE.Group();
+      const legMat = new THREE.MeshStandardMaterial({ color: pantsColor, roughness: 0.7 });
+      const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.55 });
+      const skinMat = new THREE.MeshStandardMaterial({ color: 0xd99b72, roughness: 0.5 });
+
+      const legL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.48, 0.14), legMat);
+      legL.position.set(-0.09, 0.24, 0);
+      const legR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.48, 0.14), legMat);
+      legR.position.set(0.09, 0.24, 0);
+
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.52, 0.20), shirtMat);
+      torso.position.y = 0.72;
+      torso.castShadow = true;
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), skinMat);
+      head.position.y = 1.13;
+      head.castShadow = true;
+
+      g.add(legL, legR, torso, head);
+
+      // Sims Plumbob Diamond for VIP Guest Pass
+      let plumbob = null;
+      if (isVip) {
+        plumbob = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.22, 0),
+          new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.85 })
+        );
+        plumbob.scale.set(0.7, 1.35, 0.7);
+        plumbob.position.y = 1.65;
+        g.add(plumbob);
+      }
+
+      // Tray for Lounge Runner staff
+      if (isStaff) {
+        const tray = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.24, 0.22, 0.04, 14),
+          new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.5 })
+        );
+        tray.position.set(0.22, 0.85, 0.22);
+        g.add(tray);
+      }
+
+      g.userData.rig = { legL, legR, torso, head, plumbob };
+      return g;
+    }
+
+    function createBrunoDog() {
+      const g = new THREE.Group();
+      const fur = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.65 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.28, 0.62), fur);
+      body.position.y = 0.30;
+      body.castShadow = true;
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 0.26), fur);
+      head.position.set(0, 0.46, 0.34);
+      const tail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.26), fur);
+      tail.position.set(0, 0.38, -0.36);
+      g.add(body, head, tail);
+      g.position.set(-6.8, 0.12, 2.2);
+      g.userData = {
+        inspectType: 'bruno',
+        title: '🐕 Bruno — Doolally Khar Mascot',
+        desc: 'Pet-friendly Golden Retriever greeting guests between the Outdoor Patio and Entry Foyer. Boosts guest patience by +12% while waiting!'
+      };
+      raycastTargets.push(body);
+      body.userData = g.userData;
+      return g;
+    }
+
+    // =========================================================================
+    // 4. GUEST PARTY LIFECYCLE & DISCRETE-EVENT SIMULATION ENGINE
+    // =========================================================================
+    let nextPartyId = 101;
+
+    function spawnParty(forceVip = false, customSize = null) {
+      const id = nextPartyId++;
+      const arch = forceVip ? ARCHETYPES[1] : ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)];
+      const size = customSize || (Math.random() < 0.42 ? 2 : (Math.random() < 0.82 ? 4 : 6));
+      const group = new THREE.Group();
+
+      // Mood Halo Ring on floor
+      const halo = new THREE.Mesh(
+        new THREE.RingGeometry(0.45, 0.68, 20),
+        new THREE.MeshBasicMaterial({ color: arch.color, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+      );
+      halo.rotation.x = -Math.PI / 2;
+      halo.position.y = 0.06;
+      halo.visible = (STATE.lens === 'mood');
+      group.add(halo);
+
+      const members = [];
+      const shirtColors = [0x38bdf8, 0xf472b6, 0xa78bfa, 0x34d399, 0xfbbf24, 0xf87171];
+      for (let m = 0; m < size; m++) {
+        const person = createHumanMesh(
+          forceVip ? 0x10b981 : shirtColors[(id + m) % shirtColors.length],
+          0x1e293b,
+          forceVip && m === 0,
+          false
+        );
+        const ox = ((m % 2) - 0.5) * 0.45;
+        const oz = (Math.floor(m / 2) - 0.5) * 0.45;
+        person.position.set(ox, 0, oz);
+        group.add(person);
+        members.push(person);
+      }
+
+      // Spawn on Road No. 3 Footpath approaching Entrance
+      group.position.set(-6.5 + Math.random() * 2.5, 0.08, 8.7);
+      scene.add(group);
+
+      const party = {
+        id,
+        name: forceVip ? `VIP Party #${id}` : `Party #${id} (${size}p)`,
+        archetype: arch,
+        size,
+        isVip: forceVip,
+        group,
+        members,
+        halo,
+        state: 'arriving', // arriving -> lounge -> outdoor_queue -> seated -> leaving
+        patience: arch.patience + (Math.random() * 6 - 3),
+        maxPatience: arch.patience,
+        loungeMinutes: 0,
+        dwellRemaining: arch.dwell + (STATE.miMatch ? 28 : 0),
+        orderedTaster: false,
+        orderedFood: false,
+        assignedSeats: [],
+        assignedLoungeSpots: [],
+        targetPos: new THREE.Vector3(-2.7, 0.08, 7.2),
+        tableProps: []
+      };
+
+      // Raycast metadata on members
+      members.forEach(mem => {
+        mem.traverse(ch => {
+          if (ch.isMesh) {
+            ch.userData = Object.assign({}, ch.userData, { inspectType: 'party', partyRef: party });
+            raycastTargets.push(ch);
+          }
+        });
+      });
+
+      parties.push(party);
+      STATE.arrivedGroups++;
+      if (forceVip) {
+        STATE.vipPartyId = id;
+        document.getElementById('thought-text').textContent =
+          `💎 VIP Guest Pass #${id} (${size} pax) arrived on Road No. 3 — scanning Mug Club QR!`;
+      }
+      return party;
+    }
+
+    function findAvailableSeatsForParty(size) {
+      const allowedZones = STATE.monsoon ? ['indoor', 'bar'] : ['indoor', 'patio', 'bar'];
+      const freeSeats = seats.filter(s => !s.occupiedBy && allowedZones.includes(s.zone));
+      if (freeSeats.length < size) return null;
+
+      if (STATE.scenario === 3 && STATE.guardrails.smartPack) {
+        // Smart Communal Seat Packing: groups compatible free seats by table
+        const byTable = {};
+        freeSeats.forEach(s => {
+          byTable[s.tableId] = byTable[s.tableId] || [];
+          byTable[s.tableId].push(s);
+        });
+        for (const tid of Object.keys(byTable)) {
+          if (byTable[tid].length >= size) {
+            return byTable[tid].slice(0, size);
+          }
+        }
+        return freeSeats.slice(0, size);
+      } else {
+        // Scenario 1 & 2: requires whole empty table or contiguous block
+        const byTable = {};
+        seats.filter(s => allowedZones.includes(s.zone)).forEach(s => {
+          byTable[s.tableId] = byTable[s.tableId] || [];
+          byTable[s.tableId].push(s);
+        });
+        for (const tid of Object.keys(byTable)) {
+          const tblSeats = byTable[tid];
+          if (tblSeats.every(s => !s.occupiedBy) && tblSeats.length >= size) {
+            return tblSeats.slice(0, size);
+          }
+        }
+        return null;
+      }
+    }
+
+    function seatPartyAt(party, chosenSeats) {
+      releaseLoungeSpots(party);
+      party.assignedSeats = chosenSeats;
+      party.state = 'seated';
+      STATE.seatedGroups++;
+
+      chosenSeats.forEach((s, idx) => {
+        s.occupiedBy = party.id;
+        const mem = party.members[idx];
+        if (mem) {
+          mem.position.set(s.x - party.group.position.x, s.y - party.group.position.y, s.z - party.group.position.z);
+          mem.rotation.y = s.rotY;
+          // Sitting posture
+          if (mem.userData.rig) {
+            mem.userData.rig.legL.rotation.x = -Math.PI / 2.2;
+            mem.userData.rig.legR.rotation.x = -Math.PI / 2.2;
+          }
+        }
+      });
+
+      // Spawn 3D Pint Glasses & Food/Board Game Props on the Table
+      const anchorSeat = chosenSeats[0];
+      if (anchorSeat && anchorSeat.tableCenter) {
+        const tc = anchorSeat.tableCenter;
+        for (let p = 0; p < Math.min(party.size, 4); p++) {
+          const pint = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.055, 0.045, 0.18, 10),
+            new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 0.3 })
+          );
+          pint.position.set(tc.x + (p - 1.5) * 0.26, tc.y + 0.09, tc.z + (p % 2 === 0 ? -0.15 : 0.15));
+          scene.add(pint);
+          party.tableProps.push(pint);
+        }
+        if (party.archetype.key === 'gamer') {
+          const gBox = new THREE.Mesh(
+            new THREE.BoxGeometry(0.32, 0.06, 0.24),
+            new THREE.MeshStandardMaterial({ color: 0xef4444 })
+          );
+          gBox.position.set(tc.x, tc.y + 0.03, tc.z);
+          scene.add(gBox);
+          party.tableProps.push(gBox);
+        }
+      }
+
+      // Pour from 8-Tap Bank
+      const tap = TAP_DATA[Math.floor(Math.random() * TAP_DATA.length)];
+      const pourVol = party.archetype.key === 'mugclub' ? 0.50 : 0.33;
+      tap.liters = Math.max(0, tap.liters - pourVol * party.size);
+      tap.sold += party.size;
+      if (tap.liters < 1.2 && tap.backup > 0) {
+        tap.backup--;
+        tap.liters = 30.0;
+      }
+
+      if (party.isVip) {
+        showToast(`✅ VIP Party #${party.id} seated at ${anchorSeat.tableId}!`);
+      }
+    }
+
+    function releaseLoungeSpots(party) {
+      party.assignedLoungeSpots.forEach(sp => {
+        if (sp.occupiedBy === party.id) sp.occupiedBy = null;
+      });
+      party.assignedLoungeSpots = [];
+    }
+
+    function releaseParty(party, reneged = false) {
+      releaseLoungeSpots(party);
+      party.assignedSeats.forEach(s => {
+        if (s.occupiedBy === party.id) s.occupiedBy = null;
+      });
+      party.tableProps.forEach(pr => scene.remove(pr));
+      scene.remove(party.group);
+      if (reneged) STATE.renegedGroups++;
+      const idx = parties.indexOf(party);
+      if (idx !== -1) parties.splice(idx, 1);
+    }
+
+    function seedInitialVenue() {
+      // Pre-populate 11 realistic parties inside so scene is immediately alive
+      for (let i = 0; i < 11; i++) {
+        const p = spawnParty(false, i % 3 === 0 ? 4 : 2);
+        const s = findAvailableSeatsForParty(p.size);
+        if (s) {
+          p.group.position.set(s[0].x, s[0].y, s[0].z);
+          seatPartyAt(p, s);
+        }
+      }
+      // Put 3 parties into Wait Lounge in Scenarios 2/3
+      if (STATE.scenario >= 2) {
+        for (let w = 0; w < 3; w++) {
+          const wp = spawnParty(false, 2);
+          assignPartyToLounge(wp);
+        }
+      }
+    }
+
+    function assignPartyToLounge(party) {
+      const freeSpots = loungeSpots.filter(sp => !sp.occupiedBy);
+      if (freeSpots.length >= party.size) {
+        const chosen = freeSpots.slice(0, party.size);
+        chosen.forEach((sp, idx) => {
+          sp.occupiedBy = party.id;
+          const mem = party.members[idx];
+          if (mem) {
+            mem.position.set(sp.x - party.group.position.x, 0, sp.z - party.group.position.z);
+          }
+        });
+        party.assignedLoungeSpots = chosen;
+        party.state = 'lounge';
+        party.loungeMinutes = 0;
+        if (!party.orderedTaster && Math.random() < party.archetype.tasterProb) {
+          party.orderedTaster = true;
+          party.orderedFood = Math.random() < party.archetype.foodProb;
+          STATE.loungeOrders += party.size;
+          // Deduct 180ml taster from Taps 1 or 6
+          const t = TAP_DATA[party.id % 2 === 0 ? 0 : 5];
+          t.liters = Math.max(0, t.liters - 0.18 * party.size);
+          t.sold += party.size;
+        }
+        return true;
+      }
+      return false;
+    }
+
+    let spawnAccumulator = 0;
+    let thoughtTimer = 0;
+
+    function stepSimulation(dt) {
+      if (!STATE.playing) return;
+      const simDeltaMin = dt * 0.45 * STATE.speed; // Scaled real-time simulation speed
+      STATE.simMinutes = (STATE.simMinutes + simDeltaMin) % (24 * 60);
+
+      // Emergency 60-sec Egress Clear animation
+      if (STATE.emergencyClearTimer > 0) {
+        STATE.emergencyClearTimer = Math.max(0, STATE.emergencyClearTimer - dt * 12);
+        document.getElementById('egress-timer-msg').textContent =
+          `🚨 EGRESS DRILL ACTIVE: Folding lounge modular units (${Math.ceil(STATE.emergencyClearTimer)}s left) — 1.0m + 1.50m CLEAR!`;
+      }
+      foldableLoungeObjects.forEach(obj => {
+        const targetX = STATE.emergencyClearTimer > 0 ? 1.55 : obj.userData.homePos.x;
+        obj.position.x += (targetX - obj.position.x) * Math.min(1, dt * 6);
+      });
+
+      // Arrival rate (42 grp/hr Fri-Sat peak, 52 grp/hr MI Match night)
+      const arrRate = STATE.miMatch ? 52 : 42;
+      spawnAccumulator += (arrRate / 60) * simDeltaMin;
+      if (spawnAccumulator >= 1 && parties.length < 28) {
+        spawnAccumulator -= 1;
+        spawnParty(false);
+      }
+
+      // Bruno the Golden Retriever gentle patrol
+      if (brunoDog) {
+        const t = performance.now() * 0.0012;
+        brunoDog.position.x = -5.8 + Math.sin(t) * 2.4;
+        brunoDog.position.z = 3.2 + Math.cos(t * 0.7) * 2.2;
+        brunoDog.rotation.y = Math.atan2(Math.cos(t) * 2.4, -Math.sin(t * 0.7) * 1.54);
+      }
+
+      // Lounge Runner staff shuttle between 8-Tap Bar and Entry Foyer Lounge
+      if (loungeRunner) {
+        const rt = performance.now() * 0.0015;
+        const activeLounge = parties.some(p => p.state === 'lounge');
+        const targetZ = activeLounge ? (-4.5 + (Math.sin(rt) * 0.5 + 0.5) * 7.8) : -4.8;
+        loungeRunner.position.z += (targetZ - loungeRunner.position.z) * Math.min(1, dt * 3);
+        loungeRunner.rotation.y = targetZ > loungeRunner.position.z ? 0 : Math.PI;
+      }
+
+      // Rain particles animation
+      if (rainSystem && rainSystem.visible) {
+        const posAttr = rainSystem.geometry.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+          let y = posAttr.getY(i) - dt * 14;
+          if (y < 0) y = 12;
+          posAttr.setY(i, y);
+        }
+        posAttr.needsUpdate = true;
+      }
+
+      // Update each party
+      for (let i = parties.length - 1; i >= 0; i--) {
+        const p = parties[i];
+
+        // Spin VIP Plumbob
+        p.members.forEach((mem, mIdx) => {
+          if (mem.userData.rig && mem.userData.rig.plumbob) {
+            mem.userData.rig.plumbob.rotation.y += dt * 3.0;
+          }
+          if (p.state === 'arriving' || p.state === 'outdoor_queue') {
+            if (mem.userData.rig) {
+              const walkPhase = performance.now() * 0.008 + mIdx;
+              mem.userData.rig.legL.rotation.x = Math.sin(walkPhase) * 0.45;
+              mem.userData.rig.legR.rotation.x = -Math.sin(walkPhase) * 0.45;
+            }
+          }
+        });
+
+        if (p.state === 'arriving') {
+          // Move toward entrance mat (-2.7, 7.2)
+          const dx = -2.7 - p.group.position.x;
+          const dz = 7.1 - p.group.position.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist > 0.35) {
+            p.group.position.x += (dx / dist) * dt * 2.4;
+            p.group.position.z += (dz / dist) * dt * 2.4;
+          } else {
+            // Try immediate seating first
+            const openSeats = findAvailableSeatsForParty(p.size);
+            if (openSeats) {
+              p.group.position.set(openSeats[0].x, openSeats[0].y, openSeats[0].z);
+              seatPartyAt(p, openSeats);
+            } else if (STATE.scenario >= 2 && STATE.emergencyClearTimer <= 0 && assignPartyToLounge(p)) {
+              p.group.position.set(0.0, 0.1, 4.0);
+            } else {
+              // Queue outside on Road No. 3 sidewalk (Scenario 1 or full lounge)
+              if (STATE.scenario >= 2 && STATE.guardrails.pauseGate && !p.isVip) {
+                // Spillover Pause Gate redirects walk-in to WhatsApp virtual hold instead of blocking footpath
+                releaseParty(p, false);
+                continue;
+              }
+              p.state = 'outdoor_queue';
+            }
+          }
+        } else if (p.state === 'lounge') {
+          p.loungeMinutes += simDeltaMin;
+          // 25-min soft timer keeps lounge high-velocity
+          const maxHold = STATE.guardrails.softTimer ? 25 : 45;
+          const openSeats = findAvailableSeatsForParty(p.size);
+          if (openSeats) {
+            p.group.position.set(openSeats[0].x, openSeats[0].y, openSeats[0].z);
+            seatPartyAt(p, openSeats);
+          } else if (p.loungeMinutes > maxHold && !p.isVip) {
+            releaseParty(p, true);
+          }
+        } else if (p.state === 'outdoor_queue') {
+          // Line up along Road No. 3 sidewalk
+          const qIdx = parties.filter(x => x.state === 'outdoor_queue').indexOf(p);
+          const tx = -2.7 - Math.min(qIdx, 8) * 0.95;
+          const tz = 8.45;
+          p.group.position.x += (tx - p.group.position.x) * Math.min(1, dt * 3);
+          p.group.position.z += (tz - p.group.position.z) * Math.min(1, dt * 3);
+          p.patience -= simDeltaMin * 0.85;
+
+          const openSeats = findAvailableSeatsForParty(p.size);
+          if (openSeats) {
+            p.group.position.set(openSeats[0].x, openSeats[0].y, openSeats[0].z);
+            seatPartyAt(p, openSeats);
+          } else if (p.patience <= 0 && !p.isVip) {
+            releaseParty(p, true);
+          }
+        } else if (p.state === 'seated') {
+          p.dwellRemaining -= simDeltaMin;
+          if (p.dwellRemaining <= 0 && !p.isVip) {
+            releaseParty(p, false);
+          }
+        }
+      }
+
+      // Cycle RCT Guest Thought Ticker
+      thoughtTimer += dt;
+      if (thoughtTimer > 5.0 && parties.length > 0) {
+        thoughtTimer = 0;
+        const sample = parties[Math.floor(Math.random() * parties.length)];
+        document.getElementById('thought-text').textContent =
+          `${sample.name} [${sample.archetype.name}]: "${sample.archetype.thought}"`;
+      }
+
+      updateHudAndOverlays();
+    }
+
+    // =========================================================================
+    // 5. LIVE HUD, SIMCITY LENSES & PROJECTED 3D LABELS UPDATE
+    // =========================================================================
+    function updateHudAndOverlays() {
+      // Clock
+      const hrs = Math.floor(STATE.simMinutes / 60) % 24;
+      const mins = Math.floor(STATE.simMinutes % 60);
+      document.getElementById('sim-clock').textContent =
+        `SAT ${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+
+      // Seat & Lounge Counts
+      const occSeats = seats.filter(s => s.occupiedBy).length;
+      const loungePax = loungeSpots.filter(sp => sp.occupiedBy).length;
+      const outdoorQueuePax = parties
+        .filter(p => p.state === 'outdoor_queue')
+        .reduce((acc, p) => acc + p.size, 0);
+
+      // Municipal & Fire Safety Status Pill
+      const pill = document.getElementById('safety-pill');
+      const sTxt = document.getElementById('safety-text');
+      let safetyState = 'green';
+      if (outdoorQueuePax > 6 || (STATE.scenario === 1 && outdoorQueuePax > 3)) {
+        safetyState = 'red';
+        pill.className = 'status-pill status-red';
+        sTxt.textContent = `BREACH: ${outdoorQueuePax} pax spilling on Road No. 3 (<1.50m MCGM)`;
+      } else if (outdoorQueuePax > 0 || loungePax >= 15) {
+        safetyState = 'amber';
+        pill.className = 'status-pill status-amber';
+        sTxt.textContent = `WATCH: Lounge ${loungePax}/16 · Sidewalk ${outdoorQueuePax} pax`;
+      } else {
+        pill.className = 'status-pill status-green';
+        sTxt.textContent = `1.0m Exit + 1.50m Footpath: CLEAR (${loungePax}/16 Lounge)`;
+      }
+
+      // Venue Rating (0–999)
+      const baseRating = STATE.scenario === 1 ? 642 : (STATE.scenario === 2 ? 868 : 942);
+      const penalty = safetyState === 'red' ? 140 : (safetyState === 'amber' ? 35 : 0);
+      const bonus = (STATE.miMatch ? 12 : 0) + (STATE.vipPartyId ? 15 : 0);
+      document.getElementById('venue-rating').textContent = Math.max(320, Math.min(999, baseRating - penalty + bonus));
+
+      // Safety Lens Dynamic Pad & Corridor Colors
+      if (STATE.lens === 'safety') {
+        seats.forEach(s => {
+          const isClosedPatio = STATE.monsoon && s.zone === 'patio';
+          s.safetyPad.visible = true;
+          s.safetyPad.material.color.setHex(
+            isClosedPatio ? 0x64748b : (s.occupiedBy ? 0xef4444 : 0x10b981)
+          );
+        });
+        if (lensMeshes.fireCorridor) {
+          lensMeshes.fireCorridor.material.color.setHex(safetyState === 'red' ? 0xef4444 : 0x10b981);
+        }
+        if (lensMeshes.footpathZone) {
+          lensMeshes.footpathZone.material.color.setHex(
+            safetyState === 'red' ? 0xef4444 : (safetyState === 'amber' ? 0xf59e0b : 0x38bdf8)
+          );
+        }
+      }
+
+      // Mood Lens Halo Colors
+      parties.forEach(p => {
+        p.halo.visible = (STATE.lens === 'mood');
+        if (STATE.lens === 'mood') {
+          const pct = p.patience / p.maxPatience;
+          const col = p.state === 'seated' ? 0x10b981 : (pct > 0.5 ? 0xf59e0b : 0xef4444);
+          p.halo.material.color.setHex(col);
+        }
+      });
+
+      // Live P&L & Traffic Drawer Numbers
+      const scenEbitda = STATE.scenario === 1 ? 184000 : (STATE.scenario === 2 ? 256000 : 289000);
+      const loungeRev = STATE.scenario === 1 ? 0 : (STATE.loungeOrders * 345 + 38540);
+      const totalRev = scenEbitda + 66500 + 98000;
+      document.getElementById('pnl-rev').textContent = `₹${totalRev.toLocaleString('en-IN')}`;
+      document.getElementById('pnl-ebitda').textContent = `₹${scenEbitda.toLocaleString('en-IN')}`;
+      document.getElementById('pnl-lounge').textContent = `₹${loungeRev.toLocaleString('en-IN')}`;
+      document.getElementById('pnl-saved').textContent =
+        STATE.scenario === 1 ? '₹0 (Baseline)' : (STATE.scenario === 2 ? '+₹72,000' : '+₹1,05,000');
+
+      document.getElementById('traf-arr').textContent = `${STATE.miMatch ? 52 : 42} grp/hr`;
+      document.getElementById('traf-mode').textContent = STATE.miMatch ? 'MI Match + Mug Club Surge' : 'Fri–Sat Peak Surge';
+      document.getElementById('traf-wait').textContent =
+        STATE.scenario === 1 ? '38m · 26.0%' : (STATE.scenario === 2 ? '16m · 6.5%' : '11m · 3.2%');
+      document.getElementById('traf-seats').textContent = `${occSeats} / 60`;
+      document.getElementById('traf-lounge').textContent = `${loungePax} / 16 pax`;
+
+      projectWorldLabels();
+    }
+
+    function projectWorldLabels() {
+      const container = document.getElementById('world-labels');
+      container.innerHTML = '';
+      if (!activeCam) return;
+
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // Zone & Lens Labels
+      worldLabelAnchors.forEach(item => {
+        if (item.type === 'normal' && (!STATE.showLabels || STATE.lens !== 'normal')) return;
+        if (item.type === 'safety' && STATE.lens !== 'safety') return;
+        if (item.type === 'profit' && STATE.lens !== 'profit') return;
+
+        const v = item.pos.clone().project(activeCam);
+        if (v.z > 1) return;
+        const sx = (v.x * 0.5 + 0.5) * w;
+        const sy = (-v.y * 0.5 + 0.5) * h;
+        if (sx < -60 || sx > w + 60 || sy < 45 || sy > h - 45) return;
+
+        const div = document.createElement('div');
+        div.className = 'zone-tag' + (item.type !== 'normal' ? ' lens-badge' : '');
+        div.style.left = `${sx}px`;
+        div.style.top = `${sy}px`;
+        if (item.type === 'profit') div.style.borderColor = '#fbbf24';
+        if (item.type === 'safety') div.style.borderColor = '#38bdf8';
+        div.textContent = item.text;
+        container.appendChild(div);
+      });
+
+      // Mood Lens Floating Agent Badges
+      if (STATE.lens === 'mood') {
+        parties.forEach(p => {
+          const anchor = p.members[0] ? p.members[0].getWorldPosition(new THREE.Vector3()) : p.group.position.clone();
+          anchor.y += 1.65;
+          const v = anchor.project(activeCam);
+          if (v.z > 1) return;
+          const sx = (v.x * 0.5 + 0.5) * w;
+          const sy = (-v.y * 0.5 + 0.5) * h;
+          if (sx < 0 || sx > w || sy < 45 || sy > h - 45) return;
+
+          const pct = Math.max(5, Math.round((p.patience / p.maxPatience) * 100));
+          const div = document.createElement('div');
+          div.className = 'agent-pill';
+          div.style.left = `${sx}px`;
+          div.style.top = `${sy}px`;
+          const statusTag = p.state === 'seated'
+            ? `😊 Seated`
+            : (p.state === 'lounge'
+              ? `🥂 Lounge ${Math.round(p.loungeMinutes)}/25m`
+              : `⏳ Road Q (${pct}%)`);
+          div.textContent = `${p.isVip ? '💎 ' : ''}${p.size}p · ${statusTag}`;
+          container.appendChild(div);
+        });
+      }
+    }
+
+    // =========================================================================
+    // 6. CLICK-TO-INSPECT RAYCASTING & INTERACTIVE CONTROLS
+    // =========================================================================
+    function handleSceneClick(clientX, clientY) {
+      if (!activeCam) return;
+      const mouse = new THREE.Vector2(
+        (clientX / window.innerWidth) * 2 - 1,
+        -(clientY / window.innerHeight) * 2 + 1
+      );
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, activeCam);
+      const hits = raycaster.intersectObjects(raycastTargets, false);
+      if (hits.length > 0) {
+        const data = hits[0].object.userData;
+        if (data.inspectType === 'party' && data.partyRef) {
+          const p = data.partyRef;
+          openInspector(
+            `${p.isVip ? '💎 ' : '👤 '}${p.name} — ${p.archetype.name}`,
+            `<div class="section-box">
+              <div class="row-item"><span>Current State</span><strong style="text-transform:uppercase;color:#38bdf8;">${p.state}</strong></div>
+              <div class="row-item"><span>Party Size</span><strong>${p.size} Guests</strong></div>
+              <div class="row-item"><span>Patience Remaining</span><strong>${Math.max(1, Math.round(p.patience))} min</strong></div>
+              <div class="row-item"><span>Express Kiosk Order</span><strong>${p.orderedTaster ? '180ml Taster (₹200)' + (p.orderedFood ? ' + Fries (₹350)' : '') : 'Pending QR Scan'}</strong></div>
+              <p style="margin-top:8px;color:#cbd5e1;font-style:italic;">"${p.archetype.thought}"</p>
+            </div>`
+          );
+        } else if (data.inspectType === 'zone' || data.inspectType === 'bruno') {
+          openInspector(data.title, `<div class="section-box"><p>${data.desc}</p></div>`);
+        } else if (data.inspectType === 'table') {
+          const tblSeats = seats.filter(s => s.tableId === data.title);
+          const occ = tblSeats.filter(s => s.occupiedBy).length;
+          openInspector(
+            `🪑 ${data.title}`,
+            `<div class="section-box">
+              <div class="row-item"><span>Zone</span><strong style="text-transform:uppercase;">${data.zone}</strong></div>
+              <div class="row-item"><span>Occupancy</span><strong>${occ} / ${tblSeats.length} Seats Occupied</strong></div>
+              <div class="row-item"><span>Allocation Mode</span><strong>${STATE.scenario === 3 ? 'Smart Bench Packing' : 'Whole-Table Hold'}</strong></div>
+            </div>`
+          );
+        }
+      }
+    }
+
+    function openInspector(title, html) {
+      closeAllDrawers();
+      document.getElementById('insp-title').textContent = title;
+      document.getElementById('insp-body').innerHTML = html;
+      document.getElementById('drawer-inspector').classList.add('open');
+    }
+
+    window.setScenario = function(num) {
+      STATE.scenario = num;
+      [1, 2, 3].forEach(n => {
+        document.getElementById(`scen-${n}`).classList.toggle('active', n === num);
+      });
+      STATE.guardrails.smartPack = (num === 3);
+      const spBtn = document.getElementById('tog-smartpack');
+      if (spBtn) {
+        spBtn.classList.toggle('toggle-on', num === 3);
+        spBtn.textContent = num === 3 ? 'ON' : 'OFF';
+      }
+      const names = {
+        1: 'Scenario 1: Baseline Manual Queue (38m avg wait · 78% BMC breach risk)',
+        2: 'Scenario 2: FL-III Wait Lounge + Express Kiosk (16m wait · +₹72k EBITDA)',
+        3: 'Scenario 3: Full 3D Twin + Smart 60-Seat Packing (11m wait · 0% breach)'
+      };
+      showToast(names[num]);
+      updateHudAndOverlays();
+    };
+
+    window.setLens = function(lensName) {
+      STATE.lens = lensName;
+      ['normal', 'safety', 'mood', 'profit'].forEach(l => {
+        document.getElementById(`lens-${l}`).classList.toggle('active', l === lensName);
+      });
+      lensMeshes.safety.forEach(m => m.visible = (lensName === 'safety'));
+      lensMeshes.profit.forEach(m => m.visible = (lensName === 'profit'));
+      updateHudAndOverlays();
+    };
+
+    window.toggleDrawer = function(id) {
+      const target = document.getElementById(id);
+      const wasOpen = target.classList.contains('open');
+      closeAllDrawers();
+      if (!wasOpen) {
+        target.classList.add('open');
+        if (id === 'drawer-kegs') renderTapList();
+        if (id === 'drawer-sms') updateSmsPreview();
+      }
+    };
+
+    window.closeAllDrawers = function() {
+      document.querySelectorAll('.drawer-window').forEach(el => el.classList.remove('open'));
+    };
+
+    window.togglePlay = function() {
+      STATE.playing = !STATE.playing;
+      document.getElementById('btn-play').textContent = STATE.playing ? '⏸ Pause' : '▶ Play';
+    };
+
+    window.setSpeed = function(spd) {
+      STATE.speed = spd;
+      [1, 5, 15].forEach(s => document.getElementById(`spd-${s}`).classList.toggle('active', s === spd));
+    };
+
+    window.snapRotate90 = function() {
+      STATE.snapIndex = (STATE.snapIndex + 1) % 4;
+      camAzimuth = (Math.PI / 4) + STATE.snapIndex * (Math.PI / 2);
+      updateCameraTransform();
+      showToast(`↻ RCT Isometric Angle ${STATE.snapIndex * 90 + 45}°`);
+    };
+
+    window.toggleCameraMode = function() {
+      STATE.orthoMode = !STATE.orthoMode;
+      activeCam = STATE.orthoMode ? orthoCam : perspCam;
+      document.getElementById('btn-cam').textContent = STATE.orthoMode ? '🎥 Ortho Iso' : '🎥 3D Persp';
+      updateCameraTransform();
+    };
+
+    window.resetCamera = function() {
+      camTarget.set(0, 0.4, 0.5);
+      camAzimuth = Math.PI / 4;
+      camElevation = 0.76;
+      camZoom = 26;
+      updateCameraTransform();
+    };
+
+    window.toggleLabels = function() {
+      STATE.showLabels = !STATE.showLabels;
+      document.getElementById('btn-labels').classList.toggle('toggle-on', STATE.showLabels);
+      projectWorldLabels();
+    };
+
+    window.toggleMatchNight = function() {
+      STATE.miMatch = !STATE.miMatch;
+      document.getElementById('btn-match').classList.toggle('toggle-on', STATE.miMatch);
+      showToast(STATE.miMatch ? '🏏 MI Match Night ON: 52 grp/hr surge + extended screening dwell!' : '🏏 MI Match Night OFF');
+      updateHudAndOverlays();
+    };
+
+    window.toggleMonsoon = function() {
+      STATE.monsoon = !STATE.monsoon;
+      document.getElementById('btn-monsoon').classList.toggle('toggle-on', STATE.monsoon);
+      if (rainSystem) rainSystem.visible = STATE.monsoon;
+      document.getElementById('patio-status-txt').textContent =
+        STATE.monsoon ? '0 Open (16 Closed — Rain)' : '16 Seats (Open)';
+
+      if (STATE.monsoon) {
+        // Relocate outdoor patio parties indoors or into Wait Lounge
+        parties.forEach(p => {
+          if (p.state === 'seated' && p.assignedSeats.some(s => s.zone === 'patio')) {
+            p.assignedSeats.forEach(s => { if (s.occupiedBy === p.id) s.occupiedBy = null; });
+            p.assignedSeats = [];
+            p.tableProps.forEach(pr => scene.remove(pr));
+            p.tableProps = [];
+            const indoorSeats = findAvailableSeatsForParty(p.size);
+            if (indoorSeats) {
+              p.group.position.set(indoorSeats[0].x, indoorSeats[0].y, indoorSeats[0].z);
+              seatPartyAt(p, indoorSeats);
+            } else if (STATE.scenario >= 2 && assignPartyToLounge(p)) {
+              p.group.position.set(0, 0.1, 4.0);
+            } else {
+              p.state = 'outdoor_queue';
+            }
+          }
+        });
+        showToast('🌧️ Mumbai Monsoon Surge: 16 outdoor seats closed — guests shifted indoors!');
+      } else {
+        showToast('☀️ Rain Cleared: 16 West Patio seats reopened!');
+      }
+      updateHudAndOverlays();
+    };
+
+    window.spawnGuestPass = function() {
+      const vip = spawnParty(true, 4);
+      openInspector(
+        `💎 VIP Guest Pass Created — ${vip.name}`,
+        `<div class="section-box">
+          <p style="margin-bottom:8px;">Your 4-person Mug Club party (wearing the rotating green <strong>Sims Plumbob</strong>) has arrived on Road No. 3!</p>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn active" onclick="orderVipKiosk(${vip.id})">🥂 Order 180ml Taster + Fries (₹550)</button>
+            <button class="btn" onclick="seatVipNow(${vip.id})">📲 Send Table-Ready SMS Now</button>
+          </div>
+        </div>`
+      );
+    };
+
+    window.orderVipKiosk = function(id) {
+      const p = parties.find(x => x.id === id);
+      if (p) {
+        p.orderedTaster = true;
+        p.orderedFood = true;
+        STATE.loungeOrders += p.size;
+        showToast(`🥂 Express Kiosk Order sent to 8-Tap Bar for ${p.name}!`);
+      }
+    };
+
+    window.seatVipNow = function(id) {
+      const p = parties.find(x => x.id === id);
+      if (!p) return;
+      const open = findAvailableSeatsForParty(p.size) || seats.filter(s => !s.occupiedBy).slice(0, p.size);
+      if (open.length >= p.size) {
+        p.group.position.set(open[0].x, open[0].y, open[0].z);
+        seatPartyAt(p, open);
+        closeAllDrawers();
+      } else {
+        showToast('All 60 seats currently occupied — holding in FL-III Wait Lounge!');
+      }
+    };
+
+    // Keg Bank Rendering & Actions
+    function renderTapList() {
+      const container = document.getElementById('tap-list-container');
+      const totalBackup = TAP_DATA.reduce((a, t) => a + t.backup, 0);
+      const totalKegs = 8 + totalBackup;
+      document.getElementById('keg-total-stock').textContent = `${totalKegs} Kegs (${totalKegs * 30} L)`;
+
+      container.innerHTML = `<div class="section-title">Live 8-Tap Bank (30L Kegs · 28.2L Net Yield)</div>` +
+        TAP_DATA.map(t => {
+          const pct = Math.round((t.liters / 30) * 100);
+          const col = pct > 40 ? '#10b981' : (pct > 18 ? '#f59e0b' : '#ef4444');
+          return `<div style="margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;">
+              <span><strong>Tap ${t.id}: ${t.name}</strong> <span style="color:#94a3b8;font-size:10px;">(${t.backup} backup)</span></span>
+              <span style="display:flex;align-items:center;gap:6px;">
+                <span style="font-family:'JetBrains Mono',monospace;">${t.liters.toFixed(1)}L</span>
+                <button class="btn" style="padding:2px 6px;font-size:10px;" onclick="swapSingleKeg(${t.id})">Swap</button>
+              </span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col};"></div></div>
+          </div>`;
+        }).join('');
+    }
+
+    window.swapSingleKeg = function(id) {
+      const t = TAP_DATA.find(x => x.id === id);
+      if (t) {
+        t.liters = 30.0;
+        if (t.backup > 0) t.backup--;
+        renderTapList();
+        showToast(`🔄 Tap ${id} (${t.name}) swapped with fresh 30L keg (4-min purge logged)!`);
+      }
+    };
+
+    window.restockAllKegs = function() {
+      const backups = [3, 3, 3, 2, 2, 2, 1, 1];
+      TAP_DATA.forEach((t, i) => { t.liters = 30.0; t.backup = backups[i]; });
+      renderTapList();
+      showToast('🚚 Cold-Room Par Stock restored to 25 Kegs (750 L)!');
+    };
+
+    // SMS Maker Actions
+    window.setSmsTemplate = function(key) {
+      STATE.smsTemplate = key;
+      const name = document.getElementById('sms-guest-name').value || 'Guest';
+      document.getElementById('sms-body-input').value = SMS_TEMPLATES[key](name);
+      updateSmsPreview();
+    };
+
+    window.updateSmsPreview = function() {
+      const input = document.getElementById('sms-body-input');
+      if (!input.value) {
+        const name = document.getElementById('sms-guest-name').value || 'Aarav (Party of 4 · Mug Club)';
+        input.value = SMS_TEMPLATES[STATE.smsTemplate](name);
+      }
+      document.getElementById('sms-preview-bubble').textContent = input.value;
+    };
+
+    window.dispatchLiveSms = function() {
+      const waiting = parties.find(p => p.state === 'lounge' || p.state === 'outdoor_queue');
+      if (waiting) {
+        const open = findAvailableSeatsForParty(waiting.size) || seats.filter(s => !s.occupiedBy).slice(0, waiting.size);
+        if (open.length >= waiting.size) {
+          waiting.group.position.set(open[0].x, open[0].y, open[0].z);
+          seatPartyAt(waiting, open);
+        }
+      }
+      showToast('📲 WhatsApp Table-Ready Alert sent — next waiting party seated!');
+    };
+
+    // Grok Red-Team Guardrails & 60s Emergency Clear
+    window.triggerEmergencyClear = function() {
+      STATE.emergencyClearTimer = 60;
+      parties.forEach(p => {
+        if (p.state === 'lounge') {
+          releaseLoungeSpots(p);
+          p.state = 'outdoor_queue';
+        }
+      });
+      showToast('🚨 60-Sec Emergency Egress Clear activated — folding lounge furniture!');
+    };
+
+    window.toggleGuardrail = function(key, btnId) {
+      STATE.guardrails[key] = !STATE.guardrails[key];
+      const btn = document.getElementById(btnId);
+      btn.classList.toggle('toggle-on', STATE.guardrails[key]);
+      btn.textContent = STATE.guardrails[key] ? 'ON' : 'OFF';
+      showToast(`Guardrail [${key}] set to ${STATE.guardrails[key] ? 'ACTIVE' : 'OFF'}`);
+    };
+
+    // =========================================================================
+    // 7. CRASH-PROOF BOOTSTRAP & RENDER LOOP
+    // =========================================================================
+    function initSimulation() {
+      try {
+        if (typeof THREE === 'undefined') {
+          throw new Error('Three.js library failed to load. Check internet connectivity to cdnjs/unpkg.');
+        }
+        const container = document.getElementById('viewport');
+        const w = container.clientWidth || window.innerWidth || 1024;
+        const h = container.clientHeight || window.innerHeight || 768;
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f141d);
+
+        const aspect = w / h;
+        orthoCam = new THREE.OrthographicCamera(-camZoom * aspect, camZoom * aspect, camZoom, -camZoom, -200, 500);
+        perspCam = new THREE.PerspectiveCamera(42, aspect, 0.5, 300);
+        activeCam = orthoCam;
+        updateCameraTransform();
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setSize(w, h);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        setupControls(renderer.domElement);
+        buildTaproomArchitecture();
+        seedInitialVenue();
+        updateSmsPreview();
+
+        window.addEventListener('resize', () => {
+          const nw = container.clientWidth || window.innerWidth;
+          const nh = container.clientHeight || window.innerHeight;
+          renderer.setSize(nw, nh);
+          updateCameraTransform();
+        });
+
+        // Immediate first frame render so screen is never blank
+        renderer.render(scene, activeCam);
+        updateHudAndOverlays();
+
+        let lastTime = performance.now();
+        function animate(now) {
+          requestAnimationFrame(animate);
+          const dt = Math.min(0.05, (now - lastTime) / 1000);
+          lastTime = now;
+          stepSimulation(dt);
+          renderer.render(scene, activeCam);
+        }
+        requestAnimationFrame(animate);
+      } catch (err) {
+        const errBox = document.getElementById('webgl-error');
+        const errMsg = document.getElementById('webgl-error-msg');
+        errBox.style.display = 'flex';
+        errMsg.textContent = err && err.message ? err.message : String(err);
+      }
+    }
+
+    if (document.readyState === 'complete') {
+      initSimulation();
+    } else {
+      window.addEventListener('load', initSimulation);
+    }
+  })();
+  </script>
+</body>
+</html>

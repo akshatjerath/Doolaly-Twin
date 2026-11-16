@@ -1,0 +1,11 @@
+# Round 2 summary (conductor)
+
+Full responses are in this folder. Who shifted:
+
+1. **Architect vs Tuner (worker topology).** Both Modify. Agreed: the animated "hero" night is simulated once, its whole event log is sent to the main thread once and played back by a cursor (no 10 Hz delta stream), so replication batches cannot stall the animation. Agreed: batches run in chunks with progress, return typed-array KPI columns, and a test checks the hero run equals batch replication 0. Still open: Architect says one `worker.ts` + one protocol started twice (two threads) and accepts a cache key; Tuner conceded to ONE worker and NO cache on day one, on condition the batch yields between chunks so cancel/new-hero requests are not queued behind it.
+
+2. **Artisan vs Skeptic (scene authority).** Both Modify. Agreed: only user-observed elements (the three seating zones, steps, passage, gate, photo-confirmed furniture and materials) are drawn at full fidelity. The bar and other unknowns get an always-on hatched "assumed" treatment and a not-to-scale watermark; metre labels appear only in the overlay; seat counts are ranged ASSUMED params; brew tanks, communal benches, string lights, signage and any floor-level cue are omitted until the user confirms. Skeptic's added guards: the ASSUMED badge appears in every capture/screenshot, the presenter tour includes a step showing the bar marked ASSUMED, a test checks seats drawn in the scene equal seats in the sim, nothing implies a floor level.
+
+3. **Alchemist vs Skeptic (revenue and uncertainty).** Both Modify. Agreed: all revenue inputs are ASSUMED with ranges and notes citing register rows (D1/E2 for takeaway, the D5/D6 conflict for dine-in); a null input shows "Insufficient evidence", never a number; KPIs show a parameter-sweep band and the Monte Carlo CI is labelled as sampling noise only; the 75-seat recall is an upper bound. Still open: Alchemist hides revenue by default; Skeptic says report it, tagged "SIMULATED (basis: ASSUMED)", with dine-in revenue shown as a D5..D6 band, not one number.
+
+Also noted from Round 1: Advocate found that in the register only wine age (R3) is a CONFLICT; beer 21 / spirits 25 (R2) is press-verified. Cost for two (D5 vs D6) is a conflict. Khar hours: only "till 1 AM" (D5) is in the register.

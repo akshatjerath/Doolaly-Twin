@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Doolally Khar digital twin (EA 2)</title>
+  <script>try { if (localStorage.getItem('twin-theme') === 'light') document.documentElement.dataset.theme = 'light'; } catch {}</script>
+  <link rel="stylesheet" href="/src/styles/tokens.css" />
+  <style>
+    /* Colours, sizes and timings come only from src/styles/tokens.css. */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg-page); color: var(--fg); font: var(--fs-14)/1.45 var(--font); font-variant-numeric: tabular-nums; scrollbar-color: var(--control-line) var(--bg); }
+    ::selection { background: var(--accent); color: var(--on-accent); }
+    h1, h2, h3, p, ul { margin: 0; }
+    h1 { font-size: var(--fs-20); }
+    h2 { font-size: var(--fs-14); margin-bottom: var(--sp-2); }
+
+    /* Shell: top bar, left column, scene, right column, timeline. The scene is a grid cell, so panels never cover it. */
+    #app { position: fixed; inset: 0; display: grid; gap: var(--sp-2); padding: var(--sp-2);
+      grid-template: "top top top" auto "left scene right" minmax(0, 1fr) "bottom bottom bottom" auto / 320px minmax(0, 1fr) 360px; }
+    #top { grid-area: top; } #bottom { grid-area: bottom; } #tabs { display: none; }
+    #left { grid-area: left; } #right { grid-area: right; }
+    #left, #right { display: flex; flex-direction: column; gap: var(--sp-2); min-height: 0; overflow: auto; }
+    #stage { grid-area: scene; position: relative; min-height: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-panel); }
+    #scene, #hotspots { position: absolute; inset: 0; }
+    #hotspots { pointer-events: none; }
+    .panel { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-panel); padding: var(--sp-3); }
+
+    .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
+    .bar h1 { margin-right: auto; }
+    #time { display: flex; align-items: baseline; gap: var(--sp-2); }
+    #clock { font-size: var(--fs-20); }
+    #daypart, #run-no { color: var(--fg-muted); }
+    #speed { display: flex; gap: var(--sp-1); }
+    #speed button { min-width: var(--target); padding: var(--sp-2); }
+    #live { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-4); margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 1px solid var(--line); }
+    #bottom { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+    #scrub { flex: 1; min-width: 120px; }
+
+    button, select { font: inherit; color: var(--fg); background: var(--bg-raised); border: 1px solid var(--control-line); border-radius: var(--r-control); padding: var(--sp-2) var(--sp-3); min-height: var(--target); cursor: pointer; transition: background var(--t-state), border-color var(--t-state); }
+    button:hover, select:hover { border-color: var(--fg); }
+    button:active { background: var(--bg); }
+    button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+    :focus-visible { outline: 3px solid var(--accent-line); outline-offset: 2px; }
+    input[type="range"], input[type="checkbox"] { accent-color: var(--accent-line); }
+    input[type="range"] { min-height: var(--target); }
+    input[type="checkbox"] { flex: none; width: 20px; height: 20px; }
+    label { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: var(--target); }
+    .icon { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    #theme, #theme span { display: inline-flex; align-items: center; gap: var(--sp-2); }
+    #theme .to-dark, :root[data-theme="light"] #theme .to-light { display: none; }
+    :root[data-theme="light"] #theme .to-dark { display: inline-flex; }
+
+    /* Policy cards */
+    #modes { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+    #modes button { flex: 1 1 auto; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    #asis-note, #locked-note, #kiosk-note { margin-top: var(--sp-2); }
+    .policy { display: grid; gap: var(--sp-1); margin-top: var(--sp-2); }
+    .policy > button { display: grid; gap: 2px; width: 100%; text-align: left; }
+    .policy > button span { font-size: var(--fs-12); font-weight: 400; }
+    .lock { font-size: var(--fs-12); color: var(--fg-muted); }
+    .gate-msg { display: none; font-size: var(--fs-12); }
+    .policy > button[aria-pressed="true"] ~ .gate-msg { display: block; }
+    .policy:has(input:checked) .gate-msg { display: none; }
+
+    /* KPI cells: ruled, not boxed, so there are no cards inside a card. */
+    #kpis { display: grid; grid-template-columns: 1fr 1fr; }
+    .kpi { min-width: 0; padding: var(--sp-3) var(--sp-2) var(--sp-3) 0; border-top: 1px solid var(--line); }
+    .kpi:nth-child(even) { padding-left: var(--sp-3); border-left: 1px solid var(--line); }
+    .kpi h3 { font-size: var(--fs-14); font-weight: 400; color: var(--fg-muted); }
+    .kpi-value { margin: var(--sp-1) 0; font-size: var(--fs-28); font-weight: 700; line-height: 1.15; }
+    .kpi-value span { font-size: var(--fs-14); font-weight: 400; }
+    .kpi-value.band { font-size: var(--fs-20); }
+    .kpi-change { margin-bottom: var(--sp-2); font-size: var(--fs-12); }
+
+    .legend { list-style: none; padding: 0; display: grid; gap: var(--sp-2); font-size: var(--fs-12); }
+    .legend li { display: flex; align-items: center; gap: var(--sp-2); }
+    .sw { flex: none; width: 28px; height: 16px; border: 1px solid var(--control-line); border-radius: var(--r-chip); }
+    .sw.hatch { background: repeating-linear-gradient(45deg, var(--tag-assumed) 0 3px, transparent 3px 7px); }
+    .sw.ghost { border: 2px dashed var(--fg); }
+    #controls { margin-left: var(--sp-4); display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+
+    .hotspot { position: absolute; left: 0; top: 0; pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-width: var(--target); height: var(--target); padding: 0; border-radius: 22px; border: 2px solid var(--control-line); background: var(--bg); box-shadow: inset 0 0 0 2px var(--tag-observed); font-size: var(--fs-16); }
+    .hotspot.assumed { border-style: dashed; box-shadow: inset 0 0 0 2px var(--tag-assumed); }
+    .hotspot .name { display: none; font-size: var(--fs-12); white-space: nowrap; }
+    body.labels .hotspot { padding: 0 var(--sp-3); }
+    body.labels .hotspot .name { display: inline; }
+    /* Tag colours stay fixed; a thin outer line in the control colour gives every chip a 3:1 edge in both themes. */
+    .tag, .banner, .badge { box-shadow: 0 0 0 1px var(--control-line); }
+    #feed { position: absolute; top: var(--sp-2); right: var(--sp-2); z-index: 1; display: grid; gap: var(--sp-1); justify-items: end; pointer-events: none; max-width: calc(100% - 16px); }
+    #stripe:not([hidden]) ~ #feed { top: 40px; }
+    .toast { padding: var(--sp-1) var(--sp-2); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-control); box-shadow: var(--elev-1); font-size: var(--fs-12); }
+    #follow-status { position: absolute; left: var(--sp-2); top: var(--sp-2); z-index: 1; max-width: 60%; padding: var(--sp-1) var(--sp-2); background: var(--accent); color: var(--on-accent); border: 1px solid var(--control-line); border-radius: var(--r-control); font-size: var(--fs-12); font-weight: 700; pointer-events: none; }
+    #stripe:not([hidden]) ~ #follow-status { top: 40px; }
+    /* Service chain: the top bar's counts again, in the order a party goes through them. */
+    #chain { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); list-style: none; margin: 0; padding: 0 0 var(--sp-2); border-bottom: 1px solid var(--line); }
+    #chain li { display: flex; align-items: center; gap: var(--sp-2); }
+    #chain .step + .step::before { content: '›'; color: var(--fg-muted); }
+    #chain button { display: grid; text-align: left; padding: var(--sp-1) var(--sp-3); }
+    #chain button span { font-size: var(--fs-12); color: var(--fg-muted); }
+    .sub { margin: var(--sp-3) 0 var(--sp-2); font-size: var(--fs-14); }
+    #alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); }
+    #alerts button { width: 100%; text-align: left; font-size: var(--fs-12); }
+    #alerts:not(:empty) + #alerts-hint { display: none; }
+    #minimap { position: absolute; left: var(--sp-2); bottom: var(--sp-2); z-index: 1; width: 190px; background: var(--bg); border: 1px solid var(--control-line); border-radius: var(--r-control); }
+    #minimap rect { fill: var(--bg-raised); stroke: var(--control-line); stroke-width: 6; cursor: pointer; }
+    #minimap rect.assumed { stroke-dasharray: 24 16; }
+    #minimap circle { fill: var(--fg); pointer-events: none; }
+    #minimap circle.me { fill: var(--accent); stroke: var(--fg); stroke-width: 10; }
+    #bars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    .pbar { position: absolute; left: 0; top: 0; width: 36px; height: 8px; background: var(--bg); border: 1px solid var(--fg); border-radius: var(--r-chip); overflow: hidden; }
+    .pbar i { display: block; height: 100%; background: var(--fg); }
+    #overlay-key { position: absolute; left: var(--sp-2); bottom: 170px; z-index: 1; max-width: min(320px, calc(100% - 16px)); pointer-events: none; } /* sits above the mini-map, clear of the watermark */
+    /* Tours: a caption card over the scene and an outline (drawn inside the box, so scrolling columns cannot clip it) on the part being explained. */
+    #tour { position: fixed; inset-inline: 0; bottom: 210px; z-index: 5; margin-inline: auto; width: min(460px, calc(100vw - 24px)); border-color: var(--control-line); box-shadow: var(--elev-2); }
+    #tour h3 { font-size: var(--fs-16); }
+    #tour p { margin: var(--sp-2) 0; }
+    .tour-target { outline: 3px solid var(--accent-line); outline-offset: -3px; }
+    #help dl { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-2) var(--sp-4); margin: var(--sp-3) 0; }
+    #help dd { margin: 0; }
+    kbd { padding: 1px var(--sp-2); border: 1px solid var(--control-line); border-radius: var(--r-chip); font: inherit; font-weight: 700; }
+    .banner { padding: var(--sp-1) var(--sp-2); border: 2px solid var(--tag-simulated); border-radius: var(--r-chip); font-weight: 700; text-align: center; }
+    .badge { display: inline-block; padding: 2px var(--sp-2); border: 1px solid var(--tag-assumed); border-radius: var(--r-chip); font-size: var(--fs-12); }
+    .tag { display: inline-block; white-space: nowrap; padding: 1px var(--sp-2); border: 2px solid; border-radius: var(--r-chip); color: var(--fg); font-size: var(--fs-12); font-weight: 700; letter-spacing: 0.03em; }
+    .fine { font-size: var(--fs-12); color: var(--fg-muted); }
+    table { border-collapse: collapse; width: 100%; font-size: var(--fs-12); }
+    th, td { text-align: left; vertical-align: top; padding: var(--sp-1) var(--sp-2); border-top: 1px solid var(--line); }
+    th small { display: block; font-weight: 400; color: var(--fg-muted); }
+    summary { cursor: pointer; padding: var(--sp-2) 0; min-height: var(--target); display: flex; align-items: center; gap: var(--sp-2); font-weight: 700; }
+    summary::before { content: ''; flex: none; width: 8px; height: 8px; border-right: 2px solid; border-bottom: 2px solid; transform: rotate(-45deg); transition: transform var(--t-state); }
+    details[open] > summary::before { transform: rotate(45deg); }
+    .row { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin: var(--sp-2) 0; }
+    .slider { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--sp-2); margin: var(--sp-2) 0; }
+    .slider span { grid-column: 1 / -1; } .slider small { grid-column: 1 / -1; color: var(--fg-muted); font-size: var(--fs-12); }
+    .tornado-row { display: grid; grid-template-columns: 38% 1fr auto; gap: var(--sp-2); align-items: center; font-size: var(--fs-12); margin: var(--sp-1) 0; }
+    .track { height: 12px; border: 1px solid var(--line); border-radius: var(--r-chip); } .bar-fill { height: 10px; background: var(--tag-simulated); border-radius: var(--r-chip); }
+    #card:not([hidden]) ~ #context-hint { display: none; }
+    #card { margin-bottom: var(--sp-3); padding-bottom: var(--sp-3); border-bottom: 1px solid var(--line); }
+    #card p { margin: var(--sp-2) 0; }
+
+    dialog { width: min(1000px, calc(100vw - 24px)); max-height: calc(100vh - 24px); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-panel); box-shadow: var(--elev-2); padding: var(--sp-4); }
+    dialog::backdrop { background: var(--scrim); }
+    dialog pre { white-space: pre-wrap; font-size: var(--fs-12); }
+    dialog h3 { margin: var(--sp-5) 0 var(--sp-2); font-size: var(--fs-16); }
+    dialog p { margin: var(--sp-2) 0; }
+
+    /* Over the scene: these stay in every screenshot. */
+    #stripe { position: absolute; top: 0; left: 0; right: 0; z-index: 2; padding: var(--sp-1) var(--sp-3); text-align: center; font-weight: 700; letter-spacing: 0.04em; color: var(--on-warn); background: repeating-linear-gradient(135deg, var(--warn) 0 18px, var(--warn-deep) 18px 36px); }
+    #watermark { position: absolute; right: var(--sp-2); bottom: var(--sp-2); padding: var(--sp-1) var(--sp-2); background: var(--bg); color: var(--fg-muted); border: 1px solid var(--line); border-radius: var(--r-control); font-size: var(--fs-12); text-align: right; pointer-events: none; }
+    #walk-hint { position: absolute; left: 50%; bottom: var(--sp-2); transform: translateX(-50%); z-index: 2; white-space: nowrap; }
+
+    @media (max-width: 1100px) { #app { grid-template-columns: 250px minmax(0, 1fr) 300px; } }
+
+    /* Phone: scene on top, one panel at a time in a bottom sheet chosen by tabs. */
+    @media (max-width: 760px) {
+      #app { gap: var(--sp-1); padding: var(--sp-1); grid-template: "top" auto "scene" minmax(0, 1fr) "tabs" auto "sheet" 34vh "bottom" auto / minmax(0, 1fr); }
+      #left, #right { display: contents; }
+      #policies, #more, #glance, #context { grid-area: sheet; display: none; overflow: auto; }
+      body[data-tab="glance"] #glance, body[data-tab="policies"] #policies, body[data-tab="context"] #context, body[data-tab="more"] #more { display: block; }
+      #tabs { grid-area: tabs; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-1); }
+      #tabs button { padding: var(--sp-2) var(--sp-1); }
+      .panel { padding: var(--sp-2); }
+      .bar { gap: var(--sp-1) var(--sp-2); }
+      .bar .banner { font-size: var(--fs-12); }
+      #theme .txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+      #live { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; margin-top: var(--sp-1); padding-top: var(--sp-1); }
+      #watermark span { display: none; } /* the hatch key is in the legend under More */
+      #controls { display: none; flex-basis: 100%; margin: 0; }
+      #overlay-key { left: var(--sp-2); bottom: 44px; max-width: calc(100% - 16px); }
+      #tour { bottom: 42vh; }
+      /* Short phones: give the scene room by hiding the title visually (it stays for screen readers) and shrinking the sheet. */
+      @media (max-height: 700px) {
+        #app { grid-template-rows: auto minmax(0, 1fr) auto 26vh auto; }
+        #top h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+      }
+      #chain, #minimap { display: none; } /* no room on a phone: the top bar has the same counts and the scene markers the same areas */
+      body[data-tab="more"] #controls { display: flex; }
+      /* Keep the timeline to one row so the scene keeps its height; these three are under More. */
+      #labels, #follow, #free-run { display: none; }
+      body[data-tab="more"] :is(#labels, #follow, #free-run) { display: inline-block; }
+      /* Under More the whole bar is one row that scrolls sideways, so the scene stays visible while a view or overlay is changed. */
+      body[data-tab="more"] :is(#bottom, #controls) { flex-wrap: nowrap; flex-basis: auto; white-space: nowrap; }
+      body[data-tab="more"] #bottom { overflow-x: auto; }
+      body[data-tab="more"] :is(#bottom, #controls) > * { flex: none; }
+    }
+  </style>
+</head>
+<body data-tab="glance">
+<div id="app">
+  <header id="top" class="panel">
+    <div class="bar">
+      <h1>Doolally Khar twin</h1>
+      <p class="banner">SIMULATED, not measured</p>
+      <p id="time"><strong id="clock" aria-live="off">--:--</strong> <span id="daypart"></span> <span id="run-no"></span></p>
+      <div id="speed" role="group" aria-label="Playback speed">
+        <button data-speed="4" aria-pressed="true" title="4 simulated minutes per second">1×</button>
+        <button data-speed="8" aria-pressed="false" title="8 simulated minutes per second">2×</button>
+        <button data-speed="16" aria-pressed="false" title="16 simulated minutes per second">4×</button>
+        <button data-speed="32" aria-pressed="false" title="32 simulated minutes per second">8×</button>
+      </div>
+      <button id="open-help" type="button" aria-label="Help and keyboard shortcuts"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg></button>
+      <button id="theme" type="button">
+        <span class="to-light"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg><span class="txt">Light theme</span></span>
+        <span class="to-dark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg><span class="txt">Dark theme</span></span>
+      </button>
+    </div>
+    <p id="live" role="group" aria-label="Live counts from the simulated evening">
+      <span id="live-tag"></span>
+      <span>Arrived <b id="f-arrived">0</b> parties</span>
+      <span>Waiting <b id="f-waiting">0</b> parties</span>
+      <span>Seated <b id="f-seated">0</b> people</span>
+      <span>Left <b id="f-left">0</b> parties</span>
+      <span>Tokens issued <b id="f-tokens">not used</b></span>
+      <span>Takeaway <b id="f-litres">not used</b></span>
+    </p>
+  </header>
+
+  <!-- Before the panels in the source so that on a phone the tabs are reached before the sheet they control. -->
+  <nav id="tabs" aria-label="Panels">
+    <button data-tab="glance" aria-pressed="true">Glance</button>
+    <button data-tab="policies" aria-pressed="false">Run it</button>
+    <button data-tab="context" aria-pressed="false">Info</button>
+    <button data-tab="more" aria-pressed="false">More</button>
+  </nav>
+
+  <aside id="left" aria-label="Policies and legend">
+    <section id="policies" class="panel" aria-label="What to show">
+      <h2>What to show</h2>
+      <div id="modes" role="group" aria-label="Mode">
+        <button data-show="asis" aria-pressed="true">As-Is</button>
+        <button data-show="fix" aria-pressed="false">My Fix</button>
+        <button data-show="manager" id="mode-manager" aria-pressed="false" aria-describedby="manager-why" disabled>Manager's full data</button>
+      </div>
+      <p id="manager-why" class="fine"></p>
+      <p id="asis-note">Today: a manual queue on the pavement, nothing changed.</p>
+      <div id="fix-pick" role="group" aria-label="My Fix: policy" hidden>
+        <div class="policy">
+          <button data-scenario="A" aria-pressed="false"><strong>Digital waitlist</strong><span>A token, then a call when a table is free</span></button>
+        </div>
+        <div class="policy">
+          <button data-scenario="B" aria-pressed="false"><strong>Small-pour lounge</strong><span>Waitlist, plus small pours while waiting</span></button>
+          <label class="lock"><input type="checkbox" data-licence="B" /><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>Licence unconfirmed: assume permitted</span></label>
+          <p class="gate-msg">Not permitted / unknown. Needs Excise confirmation (evidence register R8). Tick the box to see a hypothetical run.</p>
+        </div>
+        <div class="policy">
+          <button data-scenario="C" aria-pressed="false"><strong>Takeaway counter</strong><span>Waitlist, plus takeaway to go</span></button>
+          <label class="lock"><input type="checkbox" data-licence="C" /><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>Licence unconfirmed: assume permitted</span></label>
+          <p class="gate-msg">Not permitted / unknown. Needs Excise confirmation (evidence register R8). Tick the box to see a hypothetical run.</p>
+        </div>
+      </div>
+      <p id="kiosk-note" class="fine" hidden><span class="badge">◇ ASSUMED LAYOUT</span> The waitlist kiosk is a proposal. Where it would stand is assumed.</p>
+      <p id="locked-note" class="fine"></p>
+      <div class="row"><button id="open-explore">Explore: change the inputs</button></div>
+    </section>
+
+    <section id="more" class="panel" aria-label="Legend, view and assumptions">
+      <h2>Legend</h2>
+      <ul class="legend">
+        <li data-tag="VERIFIED">confirmed by a source</li>
+        <li data-tag="OBSERVED">seen on the author's visits</li>
+        <li data-tag="ASSUMED">a stated guess</li>
+        <li data-tag="SIMULATED">model output</li>
+        <li><span class="sw hatch"></span>Hatched amber: assumed layout</li>
+        <li><span class="sw ghost"></span>White outline: proposed, does not exist today</li>
+      </ul>
+      <p class="row"><span id="assumed-badge" class="badge"></span></p>
+      <p class="fine">Case-study model for a design assignment. Not affiliated with the venue.</p>
+    </section>
+  </aside>
+
+  <main id="stage">
+    <div id="scene" role="img" aria-label="3D model of Doolally Taproom, Khar. Schematic, layout partly assumed."></div>
+    <div id="hotspots"></div>
+    <div id="bars" aria-hidden="true"></div>
+    <div id="feed" role="log" aria-label="What just happened in the simulated evening"></div>
+    <p id="follow-status" hidden></p>
+    <div id="stripe" hidden>HYPOTHETICAL · licence unconfirmed · requires Excise confirmation</div>
+    <div id="walk-hint" class="panel" hidden>Click to look around · W A S D to move · Esc for overview</div>
+    <svg id="minimap" role="img" aria-label="Plan of the venue. One dot per party; dashed outline means assumed layout."></svg>
+    <p id="overlay-key" class="toast" hidden></p>
+    <div id="watermark">Schematic, not to scale · layout from a hand sketch<span><br /> Hatched amber = ASSUMED LAYOUT</span></div>
+  </main>
+
+  <aside id="right" aria-label="Results and context">
+    <section id="glance" class="panel" aria-label="At a glance">
+      <h2>At a glance</h2>
+      <div id="kpis" aria-live="polite">Running...</div>
+      <p class="fine">Averages over simulated evenings, built on assumed inputs. Not measured outcomes.</p>
+    </section>
+    <section id="context" class="panel" aria-label="Context">
+      <h2>Context</h2>
+      <aside id="card" aria-label="Selected area" hidden aria-live="polite"></aside>
+      <p id="context-hint" class="fine">Select a marker in the scene to see what is known and what is assumed about that area.</p>
+      <h3 class="sub">Recent events</h3>
+      <ol id="alerts"></ol>
+      <p id="alerts-hint" class="fine">Nothing yet. Events appear here as the evening plays; select one to see where it happened.</p>
+      <div class="row">
+        <button id="open-stats">Statistics</button>
+        <button id="open-evidence">Evidence &amp; method</button>
+      </div>
+    </section>
+  </aside>
+
+  <footer id="bottom" class="panel">
+    <ol id="chain" aria-label="Service chain: live counts from the simulated evening. Select a step to look at that area."></ol>
+    <button id="play">Pause</button>
+    <span id="t-start"></span>
+    <input id="scrub" type="range" min="0" max="1" step="0.5" value="0" aria-label="Time in the simulated evening" />
+    <span id="t-end"></span>
+    <button id="labels" aria-pressed="false">Labels</button>
+    <button id="follow" aria-pressed="false">Follow a party</button>
+    <button id="free-run" aria-pressed="false" title="Play evening after evening from the same batch of simulated evenings. Off: the first evening only.">Free run</button>
+    <nav id="controls" aria-label="Camera and lighting">
+      <button data-mode="overview" aria-pressed="true">Overview</button>
+      <button data-mode="walk" aria-pressed="false">Walk through</button>
+      <button data-preset="isometric">Whole venue</button>
+      <button data-preset="top">Plan view</button>
+      <label>Overlay <select id="overlay"><option value="">None</option><option value="seats">Seats in use</option><option value="patience">Patience used</option></select></label>
+      <label>Light <select id="lighting"></select></label>
+    </nav>
+  </footer>
+</div>
+
+  <div id="tour" class="panel" role="dialog" aria-label="Guided tour" aria-live="polite" hidden></div>
+
+  <dialog id="evidence" aria-label="Evidence and method">
+    <form method="dialog"><button>Close</button></form>
+    <div id="evidence-body"></div>
+  </dialog>
+
+  <dialog id="stats" aria-label="Statistics">
+    <form method="dialog"><button>Close</button></form>
+    <p class="banner">SIMULATED, not measured outcomes. Before and after, on the same simulated guests.</p>
+    <div id="results-body" aria-live="polite">Running...</div>
+    <div class="row">
+      <button id="run-sweep">Sensitivity check</button>
+      <button id="export-csv">Export CSV</button>
+      <button id="export-png">Export PNG</button>
+      <span id="export-note" class="fine" role="status"></span>
+    </div>
+    <div id="tornado" aria-live="polite"></div>
+  </dialog>
+
+  <dialog id="explore" aria-label="Explore: stand-in inputs">
+    <form method="dialog"><button>Close</button></form>
+    <p class="banner">Stand-in for data not collected yet. Every slider is an ASSUMED input; results stay SIMULATED, not measured.</p>
+    <h3>Illustrative situations</h3>
+    <p id="presets-note" class="fine"></p>
+    <div id="presets" class="row"></div>
+    <h3>Inputs</h3>
+    <p class="fine">"Median time at table" is the service-time control here: the model has no separate service-time multiplier. A remake only matters when both its share and its extra time are above 0.</p>
+    <div id="sliders"></div>
+    <div class="row"><button id="lock-in">Lock in</button><span id="lock-status" class="fine" role="status"></span></div>
+    <p class="fine">Lock in simulates today's policy and each alternative once with these inputs and freezes the results. The main screen shows only the frozen results: moving a slider afterwards changes nothing there until you lock in again.</p>
+  </dialog>
+
+  <dialog id="help" aria-label="Help and keyboard shortcuts">
+    <form method="dialog"><button>Close</button></form>
+    <h3>What you are looking at</h3>
+    <p>One simulated evening at a taproom. Parties arrive, wait for a table, and some leave. Pick a way of running it on the left and compare the figures on the right. These are model results, not measurements.</p>
+    <p>Free run plays evening after evening from the same batch of simulated evenings. Explore (in the left panel) holds the input sliders; the main screen only changes when you press Lock in there.</p>
+    <h3>Keyboard</h3>
+    <dl>
+      <dt><kbd>Space</kbd></dt><dd>Play or pause</dd>
+      <dt><kbd>1</kbd> to <kbd>4</kbd></dt><dd>1 shows As-Is. 2, 3 and 4 show My Fix with that policy; one with an unconfirmed licence shows its lock message and nothing else.</dd>
+      <dt><kbd>L</kbd></dt><dd>Show or hide area names in the scene</dd>
+      <dt><kbd>P</kbd></dt><dd>Follow a party, or stop following</dd>
+      <dt><kbd>F</kbd></dt><dd>Frame the selected area, or the whole venue if none is selected</dd>
+      <dt><kbd>S</kbd></dt><dd>Statistics: the full before and after table, sensitivity check, export</dd>
+      <dt><kbd>E</kbd></dt><dd>Evidence and method</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Close the area card, stop following, or leave walk-through</dd>
+      <dt><kbd>T</kbd></dt><dd>Presenter tour: the camera visits each area with a caption. Esc stops it.</dd>
+      <dt><kbd>?</kbd></dt><dd>This help</dd>
+    </dl>
+    <label><input type="checkbox" id="keys-on" checked /><span>Single-key shortcuts on (Esc always works)</span></label>
+    <div class="row">
+      <button id="replay-tour" type="button">Show the introduction again</button>
+      <button id="presenter-tour" type="button">Start the presenter tour</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

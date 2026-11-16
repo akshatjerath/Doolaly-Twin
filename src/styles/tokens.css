@@ -1,0 +1,54 @@
+/* Design tokens. Dark is the default; [data-theme="light"] is the high-contrast light theme.
+   Every colour pair used in index.html is measured in tests/contrast.test.ts, which prints the table. */
+@font-face { font-family: 'DejaVu Sans'; src: url('/assets/fonts/DejaVuSans.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'DejaVu Sans'; src: url('/assets/fonts/DejaVuSans-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+
+:root {
+  color-scheme: dark;
+  --bg-page: #27323a;
+  --bg: #36454f;
+  --bg-raised: #44555f;
+  --fg: #ffffff;
+  --fg-muted: #d3d3d3;
+  --line: #708090;
+  --control-line: #a9b4bd;
+  --accent: #f4a900;
+  --on-accent: #1f2a30;
+  --accent-line: #f4a900;
+  --tag-verified: #009E73;
+  --tag-observed: #56B4E9;
+  --tag-assumed: #E69F00;
+  --tag-simulated: #CC79A7;
+  --warn: #a3271f;
+  --warn-deep: #7d1c16;
+  --on-warn: #ffffff;
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  --font: 'DejaVu Sans', Verdana, system-ui, sans-serif;
+  --fs-12: 12px; --fs-14: 14px; --fs-16: 16px; --fs-20: 20px; --fs-28: 28px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+  --r-chip: 4px; --r-control: 8px; --r-panel: 12px;
+  --elev-0: none;
+  --elev-1: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --elev-2: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --t-state: 120ms; --t-panel: 200ms; --t-camera: 900ms;
+  --target: 44px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-page: #d3d3d3;
+  --bg: #ffffff;
+  --bg-raised: #d3d3d3;
+  --fg: #36454f;
+  --fg-muted: #4a403a;
+  --control-line: #36454f;
+  --on-accent: #1f2a30;
+  --accent-line: #36454f;
+  --elev-1: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --elev-2: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-state: 0ms; --t-panel: 0ms; --t-camera: 0ms; }
+}

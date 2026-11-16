@@ -1,0 +1,3768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Doolally Taproom Khar GF — 3D Hospitality & Queue Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Standard UMD Three.js r128 with automatic unpkg fallback -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="window.__loadThreeFallback()"></script>
+  <script>
+    window.__loadThreeFallback = function() {
+      var s = document.createElement('script');
+      s.src = 'https://unpkg.com/three@0.128.0/build/three.min.js';
+      document.head.appendChild(s);
+    };
+  </script>
+  <style>
+    :root {
+      --bg-glass: rgba(15, 23, 42, 0.88);
+      --bg-glass-solid: rgba(15, 23, 42, 0.96);
+      --border-subtle: rgba(148, 163, 184, 0.24);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-amber: #f59e0b;
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+      --accent-sky: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0b1120;
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 13px;
+      user-select: none;
+    }
+
+    #viewport {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      touch-action: none;
+      cursor: grab;
+    }
+    #viewport:active {
+      cursor: grabbing;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .glass-panel {
+      background: var(--bg-glass);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.48);
+      border-radius: 14px;
+    }
+
+    .hud-btn {
+      background: rgba(30, 41, 59, 0.88);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 7px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .hud-btn:hover {
+      background: rgba(51, 65, 85, 0.96);
+      border-color: rgba(248, 250, 252, 0.38);
+      transform: translateY(-1px);
+    }
+    .hud-btn.active {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      border-color: #fbbf24;
+      color: #fff;
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);
+    }
+    .hud-btn.god-active {
+      background: linear-gradient(135deg, #7c3aed, #db2777);
+      border-color: #f472b6;
+      color: #fff;
+      box-shadow: 0 0 18px rgba(219, 39, 119, 0.5);
+    }
+
+    /* Top HUD */
+    #top-hud {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 20;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+      flex-wrap: wrap;
+    }
+    #top-hud > * {
+      pointer-events: auto;
+    }
+
+    /* Top-Left Venue Card */
+    .brand-card {
+      padding: 10px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 265px;
+      max-width: 335px;
+    }
+    .brand-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .brand-title {
+      font-weight: 800;
+      font-size: 13.5px;
+      letter-spacing: 0.02em;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .badge-pre {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: rgba(56, 189, 248, 0.16);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+    .badge-god {
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #9333ea, #ec4899);
+      color: #fff;
+      animation: pulseGlow 1.6s infinite;
+      display: none;
+    }
+    .badge-god.visible {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 11px;
+    }
+    .compliance-pill {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.25s ease;
+    }
+    .comp-green {
+      background: rgba(16, 185, 129, 0.18);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.42);
+    }
+    .comp-amber {
+      background: rgba(245, 158, 11, 0.22);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.48);
+    }
+    .comp-red {
+      background: rgba(244, 63, 94, 0.28);
+      color: #fda4af;
+      border: 1px solid rgba(244, 63, 94, 0.72);
+      animation: pulseRed 1s infinite;
+    }
+
+    .rating-wrap {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+    }
+    .rating-bar-bg {
+      flex: 1;
+      height: 6px;
+      background: rgba(51, 65, 85, 0.85);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .rating-bar-fill {
+      height: 100%;
+      width: 82%;
+      background: linear-gradient(90deg, #10b981, #fbbf24);
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    .clock-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(148, 163, 184, 0.16);
+    }
+    .speed-group {
+      display: inline-flex;
+      background: rgba(15, 23, 42, 0.75);
+      border-radius: 7px;
+      padding: 2px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+    .speed-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 6px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .speed-btn.active {
+      background: #f59e0b;
+      color: #0f172a;
+    }
+
+    /* Top-Center 3 Core Modes */
+    .mode-switcher {
+      padding: 5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    .mode-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #cbd5e1;
+      padding: 6px 11px;
+      border-radius: 10px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1px;
+      transition: all 0.16s ease;
+    }
+    .mode-btn span.sub {
+      font-size: 9.5px;
+      font-weight: 500;
+      color: #94a3b8;
+    }
+    .mode-btn:hover {
+      background: rgba(51, 65, 85, 0.55);
+      color: #fff;
+    }
+    .mode-btn.active {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.26), rgba(217, 119, 6, 0.36));
+      border-color: #f59e0b;
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.22);
+    }
+    .mode-btn.active span.sub {
+      color: #fde68a;
+    }
+
+    /* Top-Right Action Bar */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: 490px;
+    }
+
+    /* Bottom-Left Camera & SimCity Lenses */
+    #bottom-left-dock {
+      position: fixed;
+      bottom: 12px;
+      left: 12px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      pointer-events: none;
+    }
+    #bottom-left-dock > * {
+      pointer-events: auto;
+    }
+    .dock-strip {
+      padding: 5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .lens-btn {
+      background: rgba(30, 41, 59, 0.82);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: #cbd5e1;
+      padding: 6px 9px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .lens-btn:hover {
+      background: rgba(51, 65, 85, 0.96);
+      color: #fff;
+    }
+    .lens-btn.active {
+      background: #0ea5e9;
+      border-color: #7dd3fc;
+      color: #082f49;
+      font-weight: 800;
+      box-shadow: 0 0 14px rgba(14, 165, 233, 0.42);
+    }
+
+    /* Bottom-Center Impact Strip & Live Feed */
+    #bottom-center-stack {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 18;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      width: min(740px, 90vw);
+      pointer-events: none;
+    }
+    #bottom-center-stack > * {
+      pointer-events: auto;
+    }
+
+    .impact-bar {
+      width: 100%;
+      padding: 9px 14px;
+      display: none;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      border: 1px solid rgba(16, 185, 129, 0.48);
+      background: rgba(6, 78, 59, 0.88);
+    }
+    .impact-bar.visible {
+      display: grid;
+    }
+    .impact-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .impact-label {
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #a7f3d0;
+      font-weight: 700;
+    }
+    .impact-vals {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .impact-before {
+      color: #fda4af;
+      text-decoration: line-through;
+      font-size: 11px;
+    }
+    .impact-after {
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .thought-ticker {
+      width: 100%;
+      padding: 7px 13px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 11.5px;
+      overflow: hidden;
+    }
+    .ticker-badge {
+      background: rgba(245, 158, 11, 0.22);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.42);
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-size: 9.5px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    #ticker-text {
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    /* Slide-Out Drawers */
+    .drawer-panel {
+      position: fixed;
+      top: 76px;
+      right: 12px;
+      bottom: 72px;
+      width: min(445px, calc(100vw - 24px));
+      z-index: 30;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg-glass-solid);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 16px;
+      box-shadow: 0 20px 55px rgba(0, 0, 0, 0.72);
+    }
+    .drawer-panel.open {
+      display: flex;
+      animation: slideInRight 0.18s ease-out;
+    }
+    .drawer-header {
+      padding: 12px 15px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: rgba(30, 41, 59, 0.7);
+    }
+    .drawer-title {
+      font-weight: 800;
+      font-size: 13.5px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .close-btn {
+      background: rgba(51, 65, 85, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #cbd5e1;
+      width: 27px;
+      height: 27px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .close-btn:hover {
+      background: #f43f5e;
+      color: #fff;
+      border-color: #f43f5e;
+    }
+    .drawer-body {
+      padding: 13px 15px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    /* Simulation Env Controls */
+    .god-card {
+      background: linear-gradient(135deg, rgba(88, 28, 135, 0.48), rgba(157, 23, 77, 0.42));
+      border: 1px solid rgba(232, 121, 249, 0.5);
+      border-radius: 12px;
+      padding: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .god-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .god-feed {
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(232, 121, 249, 0.26);
+      border-radius: 8px;
+      padding: 8px;
+      max-height: 100px;
+      overflow-y: auto;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .god-log-item {
+      color: #f5d0fe;
+      line-height: 1.35;
+      border-bottom: 1px dashed rgba(232, 121, 249, 0.16);
+      padding-bottom: 3px;
+    }
+
+    .section-label {
+      font-size: 10.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    .situation-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    .sit-btn {
+      background: rgba(30, 41, 59, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: #e2e8f0;
+      border-radius: 9px;
+      padding: 8px 9px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .sit-btn span.prob {
+      font-size: 9.5px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+    .sit-btn:hover {
+      border-color: #38bdf8;
+      background: rgba(30, 58, 138, 0.45);
+    }
+    .sit-btn.active {
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.3), rgba(37, 99, 235, 0.38));
+      border-color: #38bdf8;
+      color: #fff;
+    }
+    .sit-btn.active span.prob {
+      color: #bae6fd;
+    }
+
+    .slider-card {
+      background: rgba(30, 41, 59, 0.58);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 10px;
+      padding: 8px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .slider-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+    .slider-val {
+      color: #fbbf24;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 11px;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: #f59e0b;
+      cursor: pointer;
+      height: 5px;
+    }
+
+    /* Pill Toggle Switch */
+    .toggle-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .toggle-row {
+      background: rgba(30, 41, 59, 0.58);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 10px;
+      padding: 8px 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .toggle-info {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .toggle-title {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+    .toggle-desc {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+    .pill-switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .pill-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .pill-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #334155;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      transition: .2s;
+      border-radius: 999px;
+    }
+    .pill-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #f8fafc;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    .pill-switch input:checked + .pill-slider {
+      background-color: #10b981;
+      border-color: #34d399;
+    }
+    .pill-switch input:checked + .pill-slider:before {
+      transform: translateX(18px);
+    }
+
+    .crisis-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .crisis-btn {
+      background: rgba(244, 63, 94, 0.18);
+      border: 1px solid rgba(244, 63, 94, 0.48);
+      color: #fecdd3;
+      border-radius: 9px;
+      padding: 8px 6px;
+      font-size: 10.5px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.14s ease;
+    }
+    .crisis-btn:hover {
+      background: rgba(244, 63, 94, 0.34);
+      color: #fff;
+    }
+
+    /* Data Boxes */
+    .kpi-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .stat-box {
+      background: rgba(30, 41, 59, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 10px;
+      padding: 9px 10px;
+    }
+    .stat-box .lbl {
+      font-size: 10px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+    .stat-box .val {
+      font-size: 15px;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-top: 2px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .stat-box .sub {
+      font-size: 9.5px;
+      color: #34d399;
+      margin-top: 2px;
+    }
+
+    .keg-row {
+      background: rgba(30, 41, 59, 0.62);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .keg-bar-bg {
+      height: 7px;
+      background: #0f172a;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .keg-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    /* Phone Preview */
+    .phone-mockup {
+      background: #090d16;
+      border: 2px solid #334155;
+      border-radius: 20px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.85);
+    }
+    .wa-bubble {
+      background: #065f46;
+      color: #ecfdf5;
+      padding: 10px 12px;
+      border-radius: 12px 12px 12px 2px;
+      font-size: 11.5px;
+      line-height: 1.45;
+      border: 1px solid rgba(52, 211, 153, 0.38);
+    }
+
+    select, input[type="text"] {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #f8fafc;
+      padding: 7px 9px;
+      border-radius: 8px;
+      font-size: 12px;
+      width: 100%;
+    }
+
+    /* Raycast Inspector Card */
+    #inspector-card {
+      position: fixed;
+      bottom: 86px;
+      left: 12px;
+      width: min(325px, calc(100vw - 24px));
+      z-index: 25;
+      padding: 11px 13px;
+      display: none;
+      flex-direction: column;
+      gap: 7px;
+      border-color: rgba(56, 189, 248, 0.55);
+    }
+    #inspector-card.visible {
+      display: flex;
+    }
+
+    /* Floating 3D Label Overlay */
+    #labels-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .floating-tag {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.38);
+      color: #f8fafc;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.45);
+    }
+    .floating-tag.alert {
+      background: rgba(190, 18, 60, 0.92);
+      border-color: #fda4af;
+      color: #fff;
+    }
+    .floating-tag.break {
+      background: rgba(3, 105, 161, 0.92);
+      border-color: #7dd3fc;
+      color: #fff;
+    }
+    .floating-tag.vip {
+      background: rgba(5, 150, 105, 0.94);
+      border-color: #6ee7b7;
+      color: #fff;
+    }
+
+    /* Toast Banner */
+    #toast-banner {
+      position: fixed;
+      top: 74px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid #f59e0b;
+      color: #fef3c7;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+    #toast-banner.show {
+      opacity: 1;
+    }
+
+    /* Diagnostic Fallback Overlay */
+    #error-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: #0f172a;
+      color: #fecdd3;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 8px rgba(236, 72, 153, 0.5); }
+      50% { box-shadow: 0 0 18px rgba(236, 72, 153, 0.95); }
+    }
+    @keyframes pulseRed {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(18px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @media (max-width: 960px) {
+      .brand-card { min-width: 215px; padding: 8px 10px; }
+      .mode-btn { padding: 5px 8px; font-size: 11px; }
+      .mode-btn span.sub { display: none; }
+      .impact-bar { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <!-- 3D WebGL Canvas Viewport -->
+  <div id="viewport"></div>
+  <!-- Projected 3D Labels (Smoke/Call/Washroom/Wrong Order/VIP Plumbob) -->
+  <div id="labels-layer"></div>
+  <!-- Non-blocking Toast Banner -->
+  <div id="toast-banner"></div>
+  <!-- WebGL Diagnostic Fallback -->
+  <div id="error-overlay"></div>
+
+  <!-- TOP HUD -->
+  <header id="top-hud">
+    <!-- Top-Left Venue & Compliance Card -->
+    <div class="glass-panel brand-card">
+      <div class="brand-header">
+        <div class="brand-title">
+          🍺 DOOLALLY KHAR GF
+          <span class="badge-pre">PRE-FIELD SIMULATOR</span>
+        </div>
+        <span id="god-mode-pill" class="badge-god">⚡ GOD MODE: ACTIVE</span>
+      </div>
+      <div class="status-row">
+        <span id="compliance-pill" class="compliance-pill comp-green">
+          🟢 MCGM 1.50m &amp; BMC 1.0m OK
+        </span>
+        <span class="mono" style="color:#cbd5e1;font-size:11px;" id="seat-count-pill">36/60 Seats</span>
+      </div>
+      <div class="rating-wrap">
+        <span style="color:#94a3b8;font-weight:700;">Venue Rating</span>
+        <div class="rating-bar-bg">
+          <div id="rating-bar" class="rating-bar-fill"></div>
+        </div>
+        <span id="rating-val" class="mono" style="font-weight:800;color:#fbbf24;">818/999</span>
+      </div>
+      <div class="clock-bar">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span id="sim-clock" class="mono" style="font-weight:800;color:#38bdf8;font-size:11.5px;">SAT 20:15</span>
+          <span id="situation-mini" style="font-size:10px;color:#cbd5e1;">Fri–Sat Peak</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <button id="btn-play-pause" class="speed-btn active" style="padding:3px 7px;" title="Pause / Resume">⏸</button>
+          <div class="speed-group">
+            <button class="speed-btn active" data-speed="1">1x</button>
+            <button class="speed-btn" data-speed="5">5x</button>
+            <button class="speed-btn" data-speed="15">15x</button>
+            <button class="speed-btn" data-speed="30">30x</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top-Center 3 Core Operational Modes -->
+    <nav class="glass-panel mode-switcher" aria-label="Operational Modes">
+      <button class="mode-btn active" data-mode="1">
+        <span>1. Current Scene (As-Is)</span>
+        <span class="sub">Manual clipboard • Threshold spillover • ₹0 wait rev</span>
+      </button>
+      <button class="mode-btn" data-mode="2">
+        <span>2. Kiosk Fix (Proposed Idea)</span>
+        <span class="sub">16-pax FL-III Lounge • Order-Only Kiosk • SMS Alerts</span>
+      </button>
+      <button class="mode-btn" data-mode="3">
+        <span>3. Manager Twin (Full Data + Impact)</span>
+        <span class="sub">Smart 60-seat packing • IoT Kegs • Before vs After</span>
+      </button>
+    </nav>
+
+    <!-- Top-Right Action Buttons -->
+    <div class="action-bar">
+      <button id="btn-sim-env" class="hud-btn" data-drawer="drawer-sim-env">🎛️ Simulation Env</button>
+      <button class="hud-btn" data-drawer="drawer-pnl">💰 P&amp;L</button>
+      <button class="hud-btn" data-drawer="drawer-kegs">🍺 Kegs &amp; Top</button>
+      <button class="hud-btn" data-drawer="drawer-traffic">🚶 Traffic</button>
+      <button class="hud-btn" data-drawer="drawer-sms">📲 SMS Maker</button>
+      <button class="hud-btn" data-drawer="drawer-guest">🎟️ Guest Pass</button>
+      <button class="hud-btn" data-drawer="drawer-audit">📋 Audit Log</button>
+    </div>
+  </header>
+
+  <!-- BOTTOM-LEFT CAMERA & SIMCITY 3D LENSES -->
+  <div id="bottom-left-dock">
+    <div class="glass-panel dock-strip">
+      <button id="btn-cam-mode" class="lens-btn" title="Switch Orthographic Isometric / Perspective 3D">📐 ISO View</button>
+      <button id="btn-cam-rot" class="lens-btn" title="Snap Rotate 90°">↻ 90°</button>
+      <button id="btn-cam-observe" class="lens-btn" title="Auto-Observe Cinema Orbit">🎥 Observe</button>
+      <button id="btn-cam-reset" class="lens-btn" title="Reset Camera">🎯 Reset</button>
+    </div>
+    <div class="glass-panel dock-strip">
+      <button class="lens-btn active" data-lens="normal">🏠 Normal View</button>
+      <button class="lens-btn" data-lens="safety">🚦 Queue &amp; Safety</button>
+      <button class="lens-btn" data-lens="mood">😊 Guest Mood</button>
+      <button class="lens-btn" data-lens="profit">💸 ₹ Profit Zones</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM-CENTER IMPACT STRIP & LIVE FEED TICKER -->
+  <div id="bottom-center-stack">
+    <div id="impact-comparison-bar" class="glass-panel impact-bar">
+      <div class="impact-cell">
+        <span class="impact-label">Avg Wait Time</span>
+        <div class="impact-vals">
+          <span class="impact-before" id="imp-wait-before">38m</span>
+          <span class="impact-after" id="imp-wait-after">14m</span>
+        </div>
+      </div>
+      <div class="impact-cell">
+        <span class="impact-label">Walk-Away (Renege)</span>
+        <div class="impact-vals">
+          <span class="impact-before" id="imp-renege-before">26.4%</span>
+          <span class="impact-after" id="imp-renege-after">6.2%</span>
+        </div>
+      </div>
+      <div class="impact-cell">
+        <span class="impact-label">Wait Lounge Rev/hr</span>
+        <div class="impact-vals">
+          <span class="impact-before">₹0</span>
+          <span class="impact-after" id="imp-rev-after">₹11,200</span>
+        </div>
+      </div>
+      <div class="impact-cell">
+        <span class="impact-label">MCGM / BMC Breaches</span>
+        <div class="impact-vals">
+          <span class="impact-before" id="imp-breach-before">14 min</span>
+          <span class="impact-after" id="imp-breach-after">0 min ✅</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-panel thought-ticker">
+      <span class="ticker-badge">LIVE TAPROOM FEED</span>
+      <span id="ticker-text">🍺 Party #104 at Upper Communal Table: "Alphonso Mead + House Fries is unmatched on Road No. 3!"</span>
+    </div>
+  </div>
+
+  <!-- RAYCAST CLICK-TO-INSPECT FLOATING CARD -->
+  <div id="inspector-card" class="glass-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <strong id="insp-title" style="color:#38bdf8;font-size:12.5px;">Zone / Entity Inspector</strong>
+      <button class="close-btn" id="btn-close-inspector">✕</button>
+    </div>
+    <div id="insp-body" style="font-size:11px;color:#cbd5e1;line-height:1.45;"></div>
+    <div id="insp-actions" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- DRAWER 1: 🎛️ SIMULATION ENV (GOD MODE, SITUATIONS, SLIDERS, TOGGLES)  -->
+  <!-- ===================================================================== -->
+  <aside id="drawer-sim-env" class="drawer-panel">
+    <div class="drawer-header">
+      <div class="drawer-title">🎛️ Simulation Env &amp; God Mode Sandbox</div>
+      <button class="close-btn" data-close>✕</button>
+    </div>
+    <div class="drawer-body">
+      <!-- Autonomous God Mode Card -->
+      <div class="god-card">
+        <div class="god-header">
+          <div>
+            <div style="font-weight:800;font-size:12.5px;color:#f5d0fe;">⚡ GOD MODE (Autonomous Real-Life Chaos Engine)</div>
+            <div style="font-size:10.5px;color:#e9d5ff;">Autonomously shifts situation types, spawns surprise waves, triggers monsoon squalls, causes keg blowouts &amp; injects smoke/washroom/remake disruptions.</div>
+          </div>
+          <label class="pill-switch">
+            <input type="checkbox" id="toggle-god-mode" />
+            <span class="pill-slider"></span>
+          </label>
+        </div>
+        <div class="god-feed" id="god-event-feed">
+          <div class="god-log-item">🧭 God Mode standby. Flip ON for real-life autonomous situation shifts &amp; random hospitality chaos.</div>
+        </div>
+      </div>
+
+      <!-- Real-Life Situation Type Selector -->
+      <div>
+        <div class="section-label">Real-Life Situation Type (Probability Engine)</div>
+        <div class="situation-grid" id="situation-grid">
+          <button class="sit-btn" data-sit="offpeak">
+            <span>☀️ Off-Peak Chill (Mon–Thu)</span>
+            <span class="prob">λ=16/hr • 12m patience • Low error</span>
+          </button>
+          <button class="sit-btn active" data-sit="weekend">
+            <span>🍻 Fri–Sat Peak Rush</span>
+            <span class="prob">λ=42/hr • 22m patience • High turnover</span>
+          </button>
+          <button class="sit-btn" data-sit="cricket">
+            <span>🏏 MI Cricket Match Surge</span>
+            <span class="prob">λ=50/hr • Projector ON • +Smoke/Calls</span>
+          </button>
+          <button class="sit-btn" data-sit="boardgame">
+            <span>🎲 Board-Game Heavy Night</span>
+            <span class="prob">λ=30/hr • Long dwell • High game use</span>
+          </button>
+          <button class="sit-btn" data-sit="monsoon">
+            <span>🌧️ Mumbai Monsoon Downpour</span>
+            <span class="prob">Patio 16 seats CLOSED • Indoor surge</span>
+          </button>
+          <button class="sit-btn" data-sit="double">
+            <span>🌪️ Chaotic Weekend Double-Surge</span>
+            <span class="prob">λ=58/hr • Match + Rain + High Error</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 7 Continuous Sliders -->
+      <div>
+        <div class="section-label">Continuous System &amp; Behavioral Sliders</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div class="slider-card">
+            <div class="slider-top">
+              <span>1. Arrival Rate (Poisson λ)</span>
+              <span class="slider-val" id="val-lambda">42 groups/hr</span>
+            </div>
+            <input type="range" id="slider-lambda" min="10" max="65" step="1" value="42" />
+          </div>
+
+          <div class="slider-card">
+            <div class="slider-top">
+              <span>2. Bar Pour Time (Base Glass)</span>
+              <span class="slider-val" id="val-pour">16s / glass</span>
+            </div>
+            <input type="range" id="slider-pour" min="10" max="30" step="1" value="16" />
+          </div>
+
+          <div class="slider-card">
+            <div class="slider-top">
+              <span>3. Kitchen Prep Time</span>
+              <span class="slider-val" id="val-kitchen">21 min</span>
+            </div>
+            <input type="range" id="slider-kitchen" min="12" max="35" step="1" value="21" />
+          </div>
+
+          <div class="slider-card">
+            <div class="slider-top">
+              <span>4. Floor &amp; Bar Staff Count</span>
+              <span class="slider-val" id="val-staff">4 staff</span>
+            </div>
+            <input type="range" id="slider-staff" min="2" max="6" step="1" value="4" />
+          </div>
+
+          <div class="slider-card">
+            <div class="slider-top">
+              <span>5. Smoke &amp; Phone Call Break Rate</span>
+              <span class="slider-val" id="val-smoke">14%</span>
+            </div>
+            <input type="range" id="slider-smoke" min="0" max="35" step="1" value="14" />
+          </div>
+
+          <div class="slider-card">
+            <div class="slider-top">
+              <span>6. Washroom Trip Rate</span>
+              <span class="slider-val" id="val-washroom">18%</span>
+            </div>
+            <input type="range" id="slider-washroom" min="0" max="40" step="1" value="18" />
+          </div>
+
+          <div class="slider-card">
+            <div class="slider-top">
+              <span>7. Wrong Order &amp; Remake Rate</span>
+              <span class="slider-val" id="val-wrong">8%</span>
+            </div>
+            <input type="range" id="slider-wrong" min="0" max="20" step="1" value="8" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 6 Clean On/Off Toggles -->
+      <div>
+        <div class="section-label">Operational &amp; Spatial On/Off Toggles</div>
+        <div class="toggle-list">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-title">1. Smart Communal Seat Packing</span>
+              <span class="toggle-desc">Packs 2-pax parties onto shared 6/10-seat benches</span>
+            </div>
+            <label class="pill-switch">
+              <input type="checkbox" id="tog-smart-pack" />
+              <span class="pill-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-title">2. Monsoon Outdoor Patio Closure</span>
+              <span class="toggle-desc">Closes West outdoor deck (16 seats unavailable)</span>
+            </div>
+            <label class="pill-switch">
+              <input type="checkbox" id="tog-monsoon" />
+              <span class="pill-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-title">3. 90-Min Board-Game Limit</span>
+              <span class="toggle-desc">Nudges game campers after 90m during peak rush</span>
+            </div>
+            <label class="pill-switch">
+              <input type="checkbox" id="tog-game-cap" />
+              <span class="pill-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-title">4. 25-Min Wait Lounge Soft Timer</span>
+              <span class="toggle-desc">Prioritizes FL-III Wait Lounge guests approaching 25m</span>
+            </div>
+            <label class="pill-switch">
+              <input type="checkbox" id="tog-lounge-timer" checked />
+              <span class="pill-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-title">5. Happy Hour Promo</span>
+              <span class="toggle-desc">+20% arrival surge &amp; taster flight demand boost</span>
+            </div>
+            <label class="pill-switch">
+              <input type="checkbox" id="tog-happy-hour" />
+              <span class="pill-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-title">6. 60-Sec Emergency Egress Clear Drill</span>
+              <span class="toggle-desc">Enforces strict 1.0m BMC &amp; 1.50m MCGM deflection</span>
+            </div>
+            <label class="pill-switch">
+              <input type="checkbox" id="tog-egress-clear" checked />
+              <span class="pill-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- One-Click Chaos & Event Injectors -->
+      <div>
+        <div class="section-label">Instant Real-Life Event Injectors</div>
+        <div class="crisis-grid">
+          <button class="crisis-btn" id="btn-inj-wrong">❌ Wrong Order</button>
+          <button class="crisis-btn" id="btn-inj-smoke">🚬 Smoke/Call Wave</button>
+          <button class="crisis-btn" id="btn-inj-washroom">🚻 Washroom Rush</button>
+        </div>
+        <div class="crisis-grid" style="margin-top:6px;">
+          <button class="crisis-btn" id="btn-blow-kegs">💥 Blow Top 2 Kegs</button>
+          <button class="crisis-btn" id="btn-fries-out">🍟 Fries Stockout</button>
+          <button class="crisis-btn" id="btn-bmc-inspect">🚨 BMC / Excise Check</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- DRAWER 2: 💰 SHIFT P&L & MONTE CARLO BENCHMARK                        -->
+  <!-- ===================================================================== -->
+  <aside id="drawer-pnl" class="drawer-panel">
+    <div class="drawer-header">
+      <div class="drawer-title">💰 Calibrated Shift P&amp;L &amp; Remake Waste</div>
+      <button class="close-btn" data-close>✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="kpi-grid-2">
+        <div class="stat-box">
+          <div class="lbl">Live Shift Revenue</div>
+          <div class="val" id="pnl-total-rev">₹1,62,480</div>
+          <div class="sub" id="pnl-rev-mix">51% Beer • 45% Food • 4% Mug</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">Shift EBITDA (Net)</div>
+          <div class="val" id="pnl-ebitda" style="color:#34d399;">₹82,190</div>
+          <div class="sub" id="pnl-margin">Gross Margin: 75.4%</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">FL-III Wait Lounge Rev</div>
+          <div class="val" id="pnl-lounge-rev" style="color:#fbbf24;">₹0</div>
+          <div class="sub" id="pnl-lounge-sub">180ml Tasters + House Fries</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">Wrong-Order Remake Waste</div>
+          <div class="val" id="pnl-remake-waste" style="color:#fda4af;">₹1,420</div>
+          <div class="sub" id="pnl-remake-count">11 remakes (₹125 food / ₹80 beer)</div>
+        </div>
+      </div>
+
+      <div class="stat-box" style="font-size:11px;line-height:1.55;">
+        <div style="font-weight:800;color:#fbbf24;margin-bottom:4px;">Maharashtra Craft Unit Economics (Khar West)</div>
+        <div>• Landed Beer COGS: <span class="mono">₹150.00/L</span> (₹55 Malt/Hops/Fruit + ₹60 MH Flat Excise + ₹35 Cellar)</div>
+        <div>• Effective Sold COGS (6% draft foam waste): <span class="mono">₹159.57/L</span></div>
+        <div>• Menu Tiers: <span class="mono">180ml Taster ₹200</span> • <span class="mono">330ml Pint ₹300–₹330</span> • <span class="mono">500ml Mug Club ₹330</span> (+₹75/pour amortized) • <span class="mono">House Fries ₹350</span></div>
+        <div>• Food Attach: <span class="mono">0.72 dishes/pour</span> @ ₹390 avg (32% food COGS) • Shift OpEx: <span class="mono">₹66,500</span></div>
+      </div>
+
+      <div class="stat-box" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:11.5px;color:#38bdf8;">🎲 100-Replication Monte Carlo Benchmark</strong>
+          <button id="btn-run-mc" class="hud-btn active" style="padding:5px 10px;font-size:11px;">Run 100 Replications</button>
+        </div>
+        <div id="mc-results" style="font-size:11px;color:#cbd5e1;line-height:1.5;">
+          Run 100 weekend peak shifts (18:30–01:00) across all 3 modes factoring in smoke/call seat-holds, washroom congestion, and wrong-order remakes.
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- DRAWER 3: 🍺 8-TAP 30L KEG STOCK & BEST SELLERS                       -->
+  <!-- ===================================================================== -->
+  <aside id="drawer-kegs" class="drawer-panel">
+    <div class="drawer-header">
+      <div class="drawer-title">🍺 8-Tap 30L IoT Keg Stock &amp; Top Sellers</div>
+      <button class="close-btn" data-close>✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="kpi-grid-2">
+        <div class="stat-box">
+          <div class="lbl">Cold-Room Par Stock</div>
+          <div class="val" id="keg-total-stock">25 Kegs (750L)</div>
+          <div class="sub" id="keg-rop-status">ROP Alert Threshold: 10 Kegs (300L)</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">House Fries Prep Stock</div>
+          <div class="val" id="fries-stock-val">68 Portions</div>
+          <div class="sub" id="fries-stock-sub">Batch fryer: 12 portions / 8m</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Live 8-Tap Bank (30L Kegs • 28.2L Net Yield)</div>
+        <div id="keg-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+
+      <div>
+        <div class="section-label">Top Selling Craft Taps &amp; Khar Starters</div>
+        <div id="top-sellers-list" class="stat-box" style="font-size:11px;line-height:1.6;"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- DRAWER 4: 🚶 WALK-IN & MICRO-FLOW TRAFFIC FUNNEL                      -->
+  <!-- ===================================================================== -->
+  <aside id="drawer-traffic" class="drawer-panel">
+    <div class="drawer-header">
+      <div class="drawer-title">🚶 Walk-In &amp; Guest Micro-Flow Traffic</div>
+      <button class="close-btn" data-close>✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="kpi-grid-2">
+        <div class="stat-box">
+          <div class="lbl">Active Seated / Total</div>
+          <div class="val" id="traf-seated">36 / 60</div>
+          <div class="sub" id="traf-outdoor-note">16 Patio + 6 Bar + 22 Upper + 16 Grid</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">Waiting Queue (Lounge / Street)</div>
+          <div class="val" id="traf-queue">4 / 0</div>
+          <div class="sub" id="traf-wait-est">Est. Wait: 16 min</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">🚬 Smoke &amp; 📞 Call Step-Outs</div>
+          <div class="val" id="traf-smoke-count" style="color:#38bdf8;">2 outside</div>
+          <div class="sub" id="traf-smoke-total">18 step-outs (seats held reserved)</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">🚻 Washrooms (2 Cubicles)</div>
+          <div class="val" id="traf-wash-count" style="color:#f472b6;">1 / 2 occupied</div>
+          <div class="sub" id="traf-wash-total">24 trips • 0 waiting in lobby</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">❌ Wrong Orders Sent Out</div>
+          <div class="val" id="traf-wrong-count" style="color:#fda4af;">11 remakes</div>
+          <div class="sub" id="traf-wrong-rate">8.0% base • +10m remake dwell</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">MCGM 1.50m &amp; BMC 1.0m</div>
+          <div class="val" id="traf-mcgm" style="color:#34d399;">Compliant</div>
+          <div class="sub" id="traf-bmc">1.50m sidewalk + 1.0m fire path</div>
+        </div>
+      </div>
+
+      <div class="stat-box" style="font-size:11px;line-height:1.58;">
+        <div style="font-weight:800;color:#38bdf8;margin-bottom:4px;">Real-Life Spatial Micro-Flows Modeled</div>
+        <div>• <strong>Smoke / Call Step-Outs:</strong> Guests leave their indoor seat reserved, walk down the yellow 3-step threshold to Road No. 3 curb for 4–8 mins, and return.</div>
+        <div>• <strong>Washroom Trips:</strong> Guests walk to the top-left pink-bordered WASHROOMS room (2 cubicles + washbasins). If both cubicles are full, a brief lobby queue forms.</div>
+        <div>• <strong>Wrong Order Remake Loop:</strong> Server returns wrong item to Kitchen/Bar, adding ₹125/₹80 waste COGS and +10 mins to table dwell time. Mode 3 QR verification cuts errors by 70%.</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- DRAWER 5: 📲 WHATSAPP / SMS ALERT MAKER                               -->
+  <!-- ===================================================================== -->
+  <aside id="drawer-sms" class="drawer-panel">
+    <div class="drawer-header">
+      <div class="drawer-title">📲 WhatsApp &amp; SMS Notification Maker</div>
+      <button class="close-btn" data-close>✕</button>
+    </div>
+    <div class="drawer-body">
+      <div>
+        <div class="section-label">1. Select Target Waiting Party</div>
+        <select id="sms-party-select"></select>
+      </div>
+
+      <div>
+        <div class="section-label">2. Choose Automated / Manual Trigger Template</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
+          <button class="sit-btn active" data-tpl="token">🎟️ Waitlist Token + 180ml Taster</button>
+          <button class="sit-btn" data-tpl="ready">🪑 Table Ready (5-Min Hold)</button>
+          <button class="sit-btn" data-tpl="remake">🔥 Remake Priority Apology</button>
+          <button class="sit-btn" data-tpl="mug">🍺 Mug Club 500ml Fast-Track</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">3. Live Smartphone Preview</div>
+        <div class="phone-mockup">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;">
+            <span>WhatsApp Business • Doolally Khar</span>
+            <span>Verified ✓</span>
+          </div>
+          <div class="wa-bubble" id="sms-preview-text">
+            🍺 Welcome to Doolally Taproom, Khar West! Token #W-108 (4 pax) is active in our FL-III Wait Lounge. Order a chilled 180ml Alphonso Mead taster (₹200) or House Fries (₹350) at the Express Kiosk while we prep your communal bench!
+          </div>
+        </div>
+      </div>
+
+      <button id="btn-send-sms" class="hud-btn active" style="justify-content:center;padding:10px;font-size:12.5px;">
+        🚀 Dispatch WhatsApp Alert &amp; Seat / Boost Party
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- DRAWER 6: 🎟️ VIP GUEST PASS & PLUMBOB SPAWNER                         -->
+  <!-- ===================================================================== -->
+  <aside id="drawer-guest" class="drawer-panel">
+    <div class="drawer-header">
+      <div class="drawer-title">🎟️ VIP Guest Pass &amp; Sims Plumbob Spawner</div>
+      <button class="close-btn" data-close>✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="stat-box" style="font-size:11.5px;line-height:1.5;">
+        Spawn your own tracked VIP party with a floating emerald <strong>Sims Plumbob diamond</strong> above their heads, and follow them through the Wait Lounge, table seating, washroom trips, or smoke breaks!
+      </div>
+
+      <div>
+        <div class="section-label">Party Name &amp; Size</div>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
+          <input type="text" id="vip-name" value="Akshat's Crew" />
+          <select id="vip-size">
+            <option value="2">2 Pax</option>
+            <option value="4" selected>4 Pax</option>
+            <option value="6">6 Pax</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-title">🍺 Mug Club Member (+50% Super Pour)</span>
+          <span class="toggle-desc">500ml pour @ ₹330 + 4s QR checkout</span>
+        </div>
+        <label class="pill-switch">
+          <input type="checkbox" id="vip-mug" checked />
+          <span class="pill-slider"></span>
+        </label>
+      </div>
+
+      <button id="btn-spawn-vip" class="hud-btn active" style="justify-content:center;padding:10px;font-size:12.5px;">
+        💎 Spawn VIP Party at Road No. 3 Entrance
+      </button>
+
+      <div id="vip-status-box" class="stat-box" style="font-size:11px;color:#cbd5e1;">
+        No active VIP Plumbob party on the floor yet. Click above to spawn one!
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- DRAWER 7: 📋 EVIDENCE & REGULATORY AUDIT LOG                          -->
+  <!-- ===================================================================== -->
+  <aside id="drawer-audit" class="drawer-panel">
+    <div class="drawer-header">
+      <div class="drawer-title">📋 Evidence &amp; Regulatory Calibration Log</div>
+      <button class="close-btn" data-close>✕</button>
+    </div>
+    <div class="drawer-body" style="font-size:11px;line-height:1.55;">
+      <div class="stat-box">
+        <strong style="color:#34d399;">[VERIFIED REGULATORY] Maharashtra Excise FL-III</strong><br>
+        On-premises consumption strictly bound to red-ink mapped permit area (min 25 sq m restaurant + 10 sq m permit room). Zero alcohol dispensed or stored in the foyer kiosk; Wait Lounge has direct bar sightline.
+      </div>
+      <div class="stat-box">
+        <strong style="color:#34d399;">[VERIFIED MUNICIPAL] MCGM (2023) &amp; BMC Fire Rules</strong><br>
+        MCGM Universal Footpath Policy mandates 0.50m Dead Zone + 1.50m unobstructed pedestrian end-user zone on Road No. 3. BMC Fire Safety mandates a continuous 1.0m clear exit passage from rear wall to exit.
+      </div>
+      <div class="stat-box">
+        <strong style="color:#38bdf8;">[VERIFIED BRAND / PLATFORM] Doolally Taproom Khar</strong><br>
+        8-tap range (Alphonso Mead, Apple Cider, Belgian Witbier, Hefeweizen, NEIPA, Oatmeal Stout, Rauchbier, Export Lager); ₹330 pint benchmark; Mug Club 500ml pour; board-game library &amp; live sports screenings.
+      </div>
+      <div class="stat-box">
+        <strong style="color:#fbbf24;">[PRE-FIELD CALIBRATION &amp; SIMULATED ASSUMPTIONS]</strong><br>
+        60-seat ground-floor architectural plan (16 Patio + 6 Bar + 22 Upper Communal + 16 Lower-Right Grid), smoke/call step-out rates, washroom cubicle utilization, and wrong-order remake loops are interactive pre-field model parameters.
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // =========================================================================
+      // 1. CALIBRATED DATA & SITUATION PROBABILITY PROFILES
+      // =========================================================================
+      const TAPS = [
+        { id: 1, name: 'Alphonso Mead', style: 'Mead • 6.5%', highCarb: false, color: 0xf59e0b, liters: 24.5, maxL: 30, pours: 68, sold: 142 },
+        { id: 2, name: 'Apple Cider', style: 'Cider • 5.0%', highCarb: false, color: 0xfacc15, liters: 21.0, maxL: 30, pours: 58, sold: 136 },
+        { id: 3, name: 'Belgian Witbier', style: 'Wheat • 4.8%', highCarb: true, color: 0xfef08a, liters: 26.2, maxL: 30, pours: 42, sold: 118 },
+        { id: 4, name: 'Hefeweizen', style: 'German Wheat • 5.2%', highCarb: true, color: 0xfbbf24, liters: 23.4, maxL: 30, pours: 51, sold: 109 },
+        { id: 5, name: 'NEIPA', style: 'Hazy IPA • 6.2%', highCarb: false, color: 0xfb923c, liters: 27.0, maxL: 30, pours: 34, sold: 94 },
+        { id: 6, name: 'Oatmeal Stout', style: 'Dark Stout • 5.6%', highCarb: false, color: 0x451a03, liters: 28.4, maxL: 30, pours: 22, sold: 67 },
+        { id: 7, name: 'Guava Mead', style: 'Fruit Mead • 6.0%', highCarb: true, color: 0xf472b6, liters: 25.1, maxL: 30, pours: 49, sold: 88 },
+        { id: 8, name: 'Export Lager', style: 'Crisp Lager • 4.7%', highCarb: false, color: 0xfde047, liters: 27.8, maxL: 30, pours: 29, sold: 76 }
+      ].map(t => Object.assign(t, { swapTimer: 0 }));
+
+      const SITUATIONS = {
+        offpeak: {
+          label: 'Off-Peak Chill',
+          lambda: 16, pourBase: 14, kitchenPrep: 16, staff: 3,
+          smokeRate: 8, washroomRate: 12, wrongRate: 4,
+          patienceMult: 0.75, dwellMult: 0.80,
+          monsoon: false, cricket: false, happyHour: false
+        },
+        weekend: {
+          label: 'Fri–Sat Peak',
+          lambda: 42, pourBase: 16, kitchenPrep: 21, staff: 4,
+          smokeRate: 14, washroomRate: 18, wrongRate: 8,
+          patienceMult: 1.0, dwellMult: 1.0,
+          monsoon: false, cricket: false, happyHour: false
+        },
+        cricket: {
+          label: 'MI Match Surge',
+          lambda: 50, pourBase: 17, kitchenPrep: 24, staff: 5,
+          smokeRate: 20, washroomRate: 24, wrongRate: 10,
+          patienceMult: 1.15, dwellMult: 1.25,
+          monsoon: false, cricket: true, happyHour: false
+        },
+        boardgame: {
+          label: 'Board-Game Night',
+          lambda: 30, pourBase: 15, kitchenPrep: 20, staff: 4,
+          smokeRate: 10, washroomRate: 16, wrongRate: 6,
+          patienceMult: 1.1, dwellMult: 1.35,
+          monsoon: false, cricket: false, happyHour: false
+        },
+        monsoon: {
+          label: 'Monsoon Downpour',
+          lambda: 38, pourBase: 16, kitchenPrep: 22, staff: 4,
+          smokeRate: 6, washroomRate: 22, wrongRate: 9,
+          patienceMult: 0.9, dwellMult: 1.15,
+          monsoon: true, cricket: false, happyHour: false
+        },
+        double: {
+          label: 'Weekend Double-Surge',
+          lambda: 58, pourBase: 19, kitchenPrep: 27, staff: 5,
+          smokeRate: 22, washroomRate: 28, wrongRate: 13,
+          patienceMult: 1.05, dwellMult: 1.2,
+          monsoon: true, cricket: true, happyHour: true
+        }
+      };
+
+      // Central Mutable Simulation State
+      const SIM = {
+        mode: 1, // 1 = As-Is, 2 = Kiosk Fix, 3 = Manager Twin
+        lens: 'normal', // 'normal', 'safety', 'mood', 'profit'
+        paused: false,
+        speed: 1,
+        godMode: false,
+        godTimer: 0,
+        situation: 'weekend',
+        simMinutes: 20 * 60 + 15, // Saturday 20:15
+        dayIndex: 5, // SAT
+        // Continuous Parameters
+        lambda: 42,
+        pourBase: 16,
+        kitchenPrep: 21,
+        staffCount: 4,
+        smokeRate: 14,
+        washroomRate: 18,
+        wrongRate: 8,
+        patienceMult: 1.0,
+        dwellMult: 1.0,
+        // Binary Toggles
+        smartPack: false,
+        monsoon: false,
+        gameCap: false,
+        loungeTimer: true,
+        happyHour: false,
+        egressClear: true,
+        // Inventory & Financials
+        backupKegs: 17, // + 8 active = 25 kegs (750L)
+        friesStock: 68,
+        beerRev: 82840,
+        foodRev: 74200,
+        mugRev: 5440,
+        loungeRev: 0,
+        lostRev: 14800,
+        remakeWasteCost: 1120,
+        remakeCount: 9,
+        totalPours: 268,
+        totalDishes: 192,
+        // Micro-flow counters
+        smokeTotalTrips: 14,
+        washroomTotalTrips: 19,
+        breachMinutes: 0,
+        venueRating: 818,
+        // Entities
+        nextPartyId: 109,
+        parties: [],
+        streetWalkers: [],
+        staff: [],
+        cubicles: [
+          { id: 1, occupant: null, doorAngle: 0 },
+          { id: 2, occupant: null, doorAngle: 0 }
+        ],
+        washroomQueue: [],
+        selectedTarget: null,
+        vipPartyId: null
+      };
+
+      // =========================================================================
+      // 2. THREE.JS SCENE, CAMERAS & CUSTOM ZERO-DEPENDENCY CAMERA CONTROLLER
+      // =========================================================================
+      let scene, renderer, orthoCam, perspCam, activeCam;
+      let isOrtho = true;
+      let observeMode = false;
+      const camState = {
+        target: new THREE.Vector3(0, 0.5, 0.5),
+        theta: Math.PI * 0.25,      // 45 deg RCT isometric angle
+        targetTheta: Math.PI * 0.25,
+        phi: 0.88,                  // Elevation angle
+        radius: 34,
+        orthoZoom: 1.0
+      };
+
+      // Scene References for Dynamic Visuals
+      const sceneRefs = {
+        seatSlots: [],       // 60 individually tracked seats
+        seatPads: [],        // 60 safety-lens floor pads
+        profitPrisms: [],    // 3D Profit Zone prisms
+        mcgmZoneMesh: null,
+        bmcLineMesh: null,
+        sightlineBeam: null,
+        kioskGroup: null,
+        loungeGroup: null,
+        projectorScreen: null,
+        rainSystem: null,
+        bruno: null,
+        brunoTarget: new THREE.Vector3(3.5, 0, 1.5),
+        sunLight: null,
+        hemiLight: null
+      };
+
+      function showToast(msg) {
+        const el = document.getElementById('toast-banner');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => el.classList.remove('show'), 3200);
+      }
+
+      function addTicker(msg) {
+        document.getElementById('ticker-text').textContent = msg;
+      }
+
+      function addGodLog(msg) {
+        const feed = document.getElementById('god-event-feed');
+        const div = document.createElement('div');
+        div.className = 'god-log-item';
+        const hh = String(Math.floor((SIM.simMinutes % 1440) / 60)).padStart(2, '0');
+        const mm = String(Math.floor(SIM.simMinutes % 60)).padStart(2, '0');
+        div.textContent = `[${hh}:${mm}] ${msg}`;
+        feed.prepend(div);
+        while (feed.children.length > 18) {
+          feed.removeChild(feed.lastChild);
+        }
+      }
+
+      // Procedural Canvas Textures
+      function makeTextCanvasTexture(text, bg, fg, width, height, fontSpec, borderColor) {
+        const c = document.createElement('canvas');
+        c.width = width;
+        c.height = height;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, width, height);
+        if (borderColor) {
+          ctx.strokeStyle = borderColor;
+          ctx.lineWidth = 10;
+          ctx.strokeRect(5, 5, width - 10, height - 10);
+        }
+        ctx.fillStyle = fg;
+        ctx.font = fontSpec || 'bold 34px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, width / 2, height / 2);
+        const tex = new THREE.CanvasTexture(c);
+        tex.needsUpdate = true;
+        return tex;
+      }
+
+      function makeRoadTexture() {
+        const c = document.createElement('canvas');
+        c.width = 1024;
+        c.height = 256;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, 1024, 256);
+        // Subtle asphalt grain
+        for (let i = 0; i < 3500; i++) {
+          ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.08)';
+          ctx.fillRect(Math.random() * 1024, Math.random() * 256, 2, 2);
+        }
+        // Dashed centerline
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 6;
+        ctx.setLineDash([34, 26]);
+        ctx.beginPath();
+        ctx.moveTo(0, 128);
+        ctx.lineTo(1024, 128);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // Road Label
+        ctx.fillStyle = 'rgba(248, 250, 252, 0.72)';
+        ctx.font = '800 32px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('ROAD NO. 3, KHAR WEST', 512, 68);
+        ctx.fillText('MULTILINK HOUSE FRONTAGE', 512, 195);
+        const tex = new THREE.CanvasTexture(c);
+        tex.needsUpdate = true;
+        return tex;
+      }
+
+      function makeWoodPlankTexture() {
+        const c = document.createElement('canvas');
+        c.width = 512;
+        c.height = 512;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#92400e';
+        ctx.fillRect(0, 0, 512, 512);
+        for (let y = 0; y < 512; y += 32) {
+          ctx.fillStyle = (y / 32) % 2 === 0 ? '#9a3412' : '#78350f';
+          ctx.fillRect(0, y, 512, 30);
+          ctx.fillStyle = 'rgba(0,0,0,0.28)';
+          ctx.fillRect(0, y + 30, 512, 2);
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(3, 4);
+        tex.needsUpdate = true;
+        return tex;
+      }
+
+      function makeTileFloorTexture() {
+        const c = document.createElement('canvas');
+        c.width = 512;
+        c.height = 512;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(0, 0, 512, 512);
+        const step = 64;
+        for (let x = 0; x < 512; x += step) {
+          for (let y = 0; y < 512; y += step) {
+            const alt = ((x + y) / step) % 2 === 0;
+            ctx.fillStyle = alt ? '#e2e8f0' : '#cbd5e1';
+            ctx.fillRect(x + 1, y + 1, step - 2, step - 2);
+          }
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(6, 5);
+        tex.needsUpdate = true;
+        return tex;
+      }
+
+      // =========================================================================
+      // 3. BUILD EXACT GROUND-FLOOR ARCHITECTURAL 3D SCENE (60 SEATS)
+      // =========================================================================
+      function buildArchitecturalScene() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.FogExp2(0x0f172a, 0.0085);
+
+        // Lights
+        sceneRefs.hemiLight = new THREE.HemisphereLight(0xfff7ed, 0x1e293b, 0.88);
+        scene.add(sceneRefs.hemiLight);
+
+        sceneRefs.sunLight = new THREE.DirectionalLight(0xfffbeb, 0.92);
+        sceneRefs.sunLight.position.set(18, 28, 16);
+        sceneRefs.sunLight.castShadow = true;
+        sceneRefs.sunLight.shadow.mapSize.width = 2048;
+        sceneRefs.sunLight.shadow.mapSize.height = 2048;
+        sceneRefs.sunLight.shadow.camera.near = 1;
+        sceneRefs.sunLight.shadow.camera.far = 85;
+        const d = 24;
+        sceneRefs.sunLight.shadow.camera.left = -d;
+        sceneRefs.sunLight.shadow.camera.right = d;
+        sceneRefs.sunLight.shadow.camera.top = d;
+        sceneRefs.sunLight.shadow.camera.bottom = -d;
+        scene.add(sceneRefs.sunLight);
+
+        // Warm Taproom Interior Point Lights
+        const barLight = new THREE.PointLight(0xf59e0b, 0.9, 16);
+        barLight.position.set(-4.5, 3.6, -7.2);
+        scene.add(barLight);
+
+        const hallLight = new THREE.PointLight(0xfef3c7, 0.75, 22);
+        hallLight.position.set(5.5, 4.0, 0.0);
+        scene.add(hallLight);
+
+        // Outer City Ground Base
+        const baseGround = new THREE.Mesh(
+          new THREE.PlaneGeometry(110, 110),
+          new THREE.MeshStandardMaterial({ color: 0x0b1120, roughness: 0.95 })
+        );
+        baseGround.rotation.x = -Math.PI / 2;
+        baseGround.position.y = -0.08;
+        scene.add(baseGround);
+
+        // ---------------------------------------------------------------------
+        // A. SOUTH STREET EDGE: ROAD NO. 3 + MCGM 2023 FOOTPATH + ENTRANCE MAT
+        // ---------------------------------------------------------------------
+        const roadMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(34, 3.4),
+          new THREE.MeshStandardMaterial({ map: makeRoadTexture(), roughness: 0.85 })
+        );
+        roadMesh.rotation.x = -Math.PI / 2;
+        roadMesh.position.set(0, -0.02, 12.2);
+        roadMesh.receiveShadow = true;
+        scene.add(roadMesh);
+
+        // MCGM 0.50m Dead Zone (Z = +8.5 to +9.0)
+        const deadZoneMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(31, 0.06, 0.50),
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 })
+        );
+        deadZoneMesh.position.set(0, 0.01, 8.75);
+        deadZoneMesh.userData = { inspectType: 'zone', title: 'MCGM 0.50m Frontage Dead Zone', desc: 'Mandatory 0.50m building frontage buffer per MCGM Universal Footpath Policy (2023).' };
+        scene.add(deadZoneMesh);
+
+        // MCGM 1.50m Clear Pedestrian End-User Zone (Z = +9.0 to +10.5)
+        sceneRefs.mcgmZoneMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(31, 0.06, 1.50),
+          new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x064e3b, emissiveIntensity: 0.25, roughness: 0.7 })
+        );
+        sceneRefs.mcgmZoneMesh.position.set(0, 0.015, 9.75);
+        sceneRefs.mcgmZoneMesh.userData = {
+          inspectType: 'zone',
+          title: 'MCGM 1.50m Pedestrian End-User Zone',
+          desc: 'Continuous 1.50m clear footpath on Road No. 3. Turns Amber (<1.50m) and Pulsing Red Breach if As-Is queue spills out.'
+        };
+        scene.add(sceneRefs.mcgmZoneMesh);
+
+        // Bottom-Left 'ENTRANCE' Doormat
+        const entranceMat = new THREE.Mesh(
+          new THREE.BoxGeometry(2.4, 0.04, 0.9),
+          new THREE.MeshStandardMaterial({
+            map: makeTextCanvasTexture('ENTRANCE', '#1e293b', '#fbbf24', 256, 96, '800 34px Inter', '#f59e0b')
+          })
+        );
+        entranceMat.position.set(-3.8, 0.045, 8.1);
+        scene.add(entranceMat);
+
+        // Streetlamps & Corner Foliage along Road No. 3
+        [-13.5, -5.5, 4.5, 13.5].forEach(lx => {
+          const pole = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.09, 3.6, 8),
+            new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7 })
+          );
+          pole.position.set(lx, 1.8, 10.4);
+          scene.add(pole);
+          const bulb = new THREE.Mesh(
+            new THREE.SphereGeometry(0.18, 10, 10),
+            new THREE.MeshBasicMaterial({ color: 0xfef08a })
+          );
+          bulb.position.set(lx, 3.6, 10.4);
+          scene.add(bulb);
+        });
+
+        // ---------------------------------------------------------------------
+        // B. LEFT (WEST) WING: TOP-LEFT PINK WASHROOMS + 16-SEAT OUTDOOR PATIO
+        // ---------------------------------------------------------------------
+        // 1. Pink-Bordered WASHROOMS Room (X = -15.0 to -9.5, Z = -10.0 to -4.2)
+        const washFloor = new THREE.Mesh(
+          new THREE.BoxGeometry(5.5, 0.08, 5.8),
+          new THREE.MeshStandardMaterial({ color: 0xfce7f3, roughness: 0.45 })
+        );
+        washFloor.position.set(-12.25, 0.02, -7.1);
+        washFloor.receiveShadow = true;
+        washFloor.userData = {
+          inspectType: 'zone',
+          title: 'Top-Left Washrooms (2 Cubicles + Basins)',
+          desc: 'Pink-bordered washroom wing with 2 working cubicles and twin washbasins. Guests walk here from tables and queue in lobby if both cubicles are busy.'
+        };
+        scene.add(washFloor);
+
+        // Pink Border Frame around Washrooms
+        const pinkMat = new THREE.MeshStandardMaterial({ color: 0xec4899, emissive: 0xdb2777, emissiveIntensity: 0.45 });
+        const pinkBorderN = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.14, 0.14), pinkMat);
+        pinkBorderN.position.set(-12.25, 0.08, -9.95);
+        const pinkBorderS = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.14, 0.14), pinkMat);
+        pinkBorderS.position.set(-12.25, 0.08, -4.25);
+        const pinkBorderW = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 5.8), pinkMat);
+        pinkBorderW.position.set(-14.95, 0.08, -7.1);
+        const pinkBorderE = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 5.8), pinkMat);
+        pinkBorderE.position.set(-9.55, 0.08, -7.1);
+        scene.add(pinkBorderN, pinkBorderS, pinkBorderW, pinkBorderE);
+
+        // Washroom Sign Plaque
+        const washSign = new THREE.Mesh(
+          new THREE.BoxGeometry(2.6, 0.05, 0.55),
+          new THREE.MeshStandardMaterial({
+            map: makeTextCanvasTexture('WASHROOMS', '#831843', '#fbcfe8', 256, 64, '800 30px Inter', '#f472b6')
+          })
+        );
+        washSign.position.set(-12.25, 0.08, -4.75);
+        scene.add(washSign);
+
+        // Two Working Toilet Cubicles + Swinging Doors
+        [-13.6, -11.4].forEach((cx, idx) => {
+          const wall = new THREE.Mesh(
+            new THREE.BoxGeometry(1.7, 1.8, 1.9),
+            new THREE.MeshStandardMaterial({ color: 0xfdf2f8, transparent: true, opacity: 0.45 })
+          );
+          wall.position.set(cx, 0.9, -8.8);
+          scene.add(wall);
+
+          const toilet = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.22, 0.18, 0.45, 10),
+            new THREE.MeshStandardMaterial({ color: 0xffffff })
+          );
+          toilet.position.set(cx, 0.25, -9.1);
+          scene.add(toilet);
+
+          // Swinging Cubicle Door Pivot
+          const pivot = new THREE.Group();
+          pivot.position.set(cx - 0.55, 0.85, -7.85);
+          const doorMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(1.1, 1.6, 0.08),
+            new THREE.MeshStandardMaterial({ color: 0xdb2777 })
+          );
+          doorMesh.position.set(0.55, 0, 0);
+          pivot.add(doorMesh);
+          scene.add(pivot);
+          SIM.cubicles[idx].doorPivot = pivot;
+          SIM.cubicles[idx].pos = new THREE.Vector3(cx, 0, -8.8);
+        });
+
+        // Twin Washbasins
+        [-6.5, -5.6].forEach(bz => {
+          const basin = new THREE.Mesh(
+            new THREE.BoxGeometry(0.55, 0.78, 0.65),
+            new THREE.MeshStandardMaterial({ color: 0xf8fafc })
+          );
+          basin.position.set(-14.4, 0.4, bz);
+          scene.add(basin);
+        });
+
+        // 2. Warm Wooden Plank OUTDOOR SEATING Patio (X = -15.0 to -6.5, Z = -4.2 to +8.5)
+        const patioDeck = new THREE.Mesh(
+          new THREE.BoxGeometry(8.5, 0.1, 12.7),
+          new THREE.MeshStandardMaterial({ map: makeWoodPlankTexture(), roughness: 0.78 })
+        );
+        patioDeck.position.set(-10.75, 0.03, 2.15);
+        patioDeck.receiveShadow = true;
+        patioDeck.userData = {
+          inspectType: 'zone',
+          title: 'West Outdoor Seating Patio (16 Seats)',
+          desc: '4 warm timber 4-seater tables surrounded by 4 lush green planter booths. Closes automatically during Mumbai Monsoon Downpours.'
+        };
+        scene.add(patioDeck);
+
+        const patioLabel = new THREE.Mesh(
+          new THREE.BoxGeometry(3.4, 0.04, 0.6),
+          new THREE.MeshStandardMaterial({
+            map: makeTextCanvasTexture('OUTDOOR SEATING', '#451a03', '#fde68a', 320, 64, '800 28px Inter', '#d97706')
+          })
+        );
+        patioLabel.position.set(-10.75, 0.09, 7.85);
+        scene.add(patioLabel);
+
+        // 4 Lush Green Planter Booths on Patio Perimeter
+        [[-14.3, -2.5], [-14.3, 4.8], [-7.2, -2.5], [-7.2, 5.2]].forEach(([px, pz]) => {
+          const box = new THREE.Mesh(
+            new THREE.BoxGeometry(0.85, 0.55, 1.8),
+            new THREE.MeshStandardMaterial({ color: 0x78350f })
+          );
+          box.position.set(px, 0.32, pz);
+          scene.add(box);
+          const foliage = new THREE.Mesh(
+            new THREE.BoxGeometry(0.95, 0.65, 1.9),
+            new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 })
+          );
+          foliage.position.set(px, 0.78, pz);
+          scene.add(foliage);
+        });
+
+        // Middle Glass Doorway connecting Patio & Entry Foyer (X = -6.5, Z = +2.2)
+        const glassDoorFrame = new THREE.Mesh(
+          new THREE.BoxGeometry(0.16, 2.2, 1.7),
+          new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.38 })
+        );
+        glassDoorFrame.position.set(-6.5, 1.1, 2.2);
+        scene.add(glassDoorFrame);
+
+        // Four 4-Seater Patio Tables (16 Outdoor Seats: Slots 0..15)
+        const patioTableCoords = [
+          [-12.2, -1.8], [-8.8, -1.8],
+          [-12.2, 3.6],  [-8.8, 3.6]
+        ];
+        patioTableCoords.forEach(([tx, tz], tIdx) => {
+          createTableWithSeats(`Patio Table P${tIdx + 1}`, tx, tz, 0.08, 1.5, 1.3, 4, true);
+        });
+
+        // ---------------------------------------------------------------------
+        // C. CENTER ENTRY FOYER, FL-III WAIT LOUNGE, KIOSK & YELLOW 3-STEP THRESHOLD
+        // ---------------------------------------------------------------------
+        const foyerFloor = new THREE.Mesh(
+          new THREE.BoxGeometry(7.0, 0.1, 7.0),
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.82 })
+        );
+        foyerFloor.position.set(-3.0, 0.03, 5.0);
+        foyerFloor.receiveShadow = true;
+        scene.add(foyerFloor);
+
+        // 1.0m BMC Unobstructed Internal Fire Exit Passage (X = -1.1, Z = +1.5 to +8.5)
+        sceneRefs.bmcLineMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(1.0, 0.03, 7.0),
+          new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.3, transparent: true, opacity: 0.65 })
+        );
+        sceneRefs.bmcLineMesh.position.set(-1.1, 0.09, 5.0);
+        sceneRefs.bmcLineMesh.userData = {
+          inspectType: 'zone',
+          title: 'BMC 1.0m Internal Fire Exit Corridor',
+          desc: 'Mumbai Fire Brigade mandatory 1.0m unobstructed passage from yellow 3-step threshold to Road No. 3 exit.'
+        };
+        scene.add(sceneRefs.bmcLineMesh);
+
+        // Yellow 3-Step Threshold leading into Indoor Dining Hall (Z = +0.6 to +1.5)
+        for (let s = 0; s < 3; s++) {
+          const stepMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(4.2, 0.12 * (s + 1), 0.32),
+            new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.5 })
+          );
+          stepMesh.position.set(-2.2, 0.06 * (s + 1), 1.45 - s * 0.32);
+          stepMesh.castShadow = true;
+          stepMesh.receiveShadow = true;
+          scene.add(stepMesh);
+        }
+
+        // Proposed FL-III / Form E Red-Ink Licensed Wait Lounge (16-pax cap) + Order-Only Kiosk
+        sceneRefs.loungeGroup = new THREE.Group();
+        const redInkMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, emissive: 0xe11d48, emissiveIntensity: 0.5 });
+        const lW = 3.8, lD = 4.6, lX = -4.2, lZ = 4.4;
+        const rN = new THREE.Mesh(new THREE.BoxGeometry(lW, 0.08, 0.1), redInkMat); rN.position.set(lX, 0.1, lZ - lD / 2);
+        const rS = new THREE.Mesh(new THREE.BoxGeometry(lW, 0.08, 0.1), redInkMat); rS.position.set(lX, 0.1, lZ + lD / 2);
+        const rW = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, lD), redInkMat); rW.position.set(lX - lW / 2, 0.1, lZ);
+        const rE = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, lD), redInkMat); rE.position.set(lX + lW / 2, 0.1, lZ);
+        sceneRefs.loungeGroup.add(rN, rS, rW, rE);
+
+        // Modular Folding Lounge Benches
+        [-3.2, -5.0].forEach(bx => {
+          const bench = new THREE.Mesh(
+            new THREE.BoxGeometry(0.65, 0.44, 3.4),
+            new THREE.MeshStandardMaterial({ color: 0xd97706 })
+          );
+          bench.position.set(bx, 0.28, 4.4);
+          sceneRefs.loungeGroup.add(bench);
+        });
+
+        // Order-Only Express Kiosk Terminal (No Alcohol Stored/Dispensed in Foyer)
+        sceneRefs.kioskGroup = new THREE.Group();
+        const kioskBody = new THREE.Mesh(
+          new THREE.BoxGeometry(0.65, 1.45, 0.55),
+          new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.6, roughness: 0.3 })
+        );
+        kioskBody.position.set(-5.7, 0.78, 4.4);
+        const kioskScreen = new THREE.Mesh(
+          new THREE.BoxGeometry(0.08, 0.55, 0.42),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+        );
+        kioskScreen.position.set(-5.35, 1.18, 4.4);
+        sceneRefs.kioskGroup.add(kioskBody, kioskScreen);
+        sceneRefs.kioskGroup.userData = {
+          inspectType: 'zone',
+          title: 'Order-Only Express Kiosk & FL-III Wait Lounge',
+          desc: '16-pax licensed wait zone. Zero alcohol stored/dispensed in foyer; 180ml tasters (₹200) & House Fries (₹350) are poured at North Craft Bar under direct sightline.'
+        };
+        sceneRefs.loungeGroup.add(sceneRefs.kioskGroup);
+
+        // Direct Bar-to-Lounge Sightline Beam
+        const beamGeo = new THREE.CylinderGeometry(0.06, 0.06, 11.5, 8);
+        beamGeo.rotateX(Math.PI / 2);
+        sceneRefs.sightlineBeam = new THREE.Mesh(
+          beamGeo,
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35 })
+        );
+        sceneRefs.sightlineBeam.position.set(-4.2, 1.55, -1.4);
+        sceneRefs.loungeGroup.add(sceneRefs.sightlineBeam);
+
+        scene.add(sceneRefs.loungeGroup);
+
+        // ---------------------------------------------------------------------
+        // D. NORTH WALL & INDOOR DINING HALL (BAR + KITCHEN + 38 SEATS + LIBRARY)
+        // ---------------------------------------------------------------------
+        const indoorFloor = new THREE.Mesh(
+          new THREE.BoxGeometry(21.5, 0.36, 18.5),
+          new THREE.MeshStandardMaterial({ map: makeTileFloorTexture(), roughness: 0.65 })
+        );
+        indoorFloor.position.set(4.25, 0.18, -0.75);
+        indoorFloor.receiveShadow = true;
+        scene.add(indoorFloor);
+
+        // 1. Honey-Oak 8-Tap Craft Bar (X = -8.8 to +0.2, Z = -9.6 to -6.8)
+        const barCounter = new THREE.Mesh(
+          new THREE.BoxGeometry(9.0, 1.12, 1.1),
+          new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.45 })
+        );
+        barCounter.position.set(-4.3, 0.92, -7.2);
+        barCounter.castShadow = true;
+        barCounter.userData = {
+          inspectType: 'zone',
+          title: 'Honey-Oak 8-Tap Craft Bar (6 Bar Stools)',
+          desc: 'Taps 1–5 standard 16s pour+rinse; Taps 6–8 high-carb Witbier/Cider 17s two-stage pour + 4-min keg swap every 75 pours.'
+        };
+        scene.add(barCounter);
+
+        // 8 Glowing Craft Beer Taps
+        TAPS.forEach((tap, idx) => {
+          const tx = -8.0 + idx * 1.05;
+          const tower = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.08, 0.48, 8),
+            new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.85, roughness: 0.2 })
+          );
+          tower.position.set(tx, 1.72, -7.2);
+          const badge = new THREE.Mesh(
+            new THREE.SphereGeometry(0.09, 10, 10),
+            new THREE.MeshBasicMaterial({ color: tap.color })
+          );
+          badge.position.set(tx, 1.98, -7.2);
+          tap.meshBadge = badge;
+          scene.add(tower, badge);
+        });
+
+        // 6 Round Wooden Bar Stools (Seats 16..21)
+        for (let b = 0; b < 6; b++) {
+          const sx = -7.8 + b * 1.35;
+          const sz = -6.05;
+          const stool = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.24, 0.22, 0.72, 12),
+            new THREE.MeshStandardMaterial({ color: 0x78350f })
+          );
+          stool.position.set(sx, 0.72, sz);
+          scene.add(stool);
+          registerSeatSlot(`Bar Stool #${b + 1}`, sx, 0.36, sz, 0, 'bar');
+        }
+
+        // 2. Enclosed Kitchen (X = +1.2 to +14.8, Z = -10.0 to -6.2)
+        const kitchenBase = new THREE.Mesh(
+          new THREE.BoxGeometry(13.6, 1.6, 3.6),
+          new THREE.MeshStandardMaterial({ color: 0x334155, transparent: true, opacity: 0.42 })
+        );
+        kitchenBase.position.set(8.0, 1.16, -8.1);
+        kitchenBase.userData = {
+          inspectType: 'zone',
+          title: 'Enclosed Kitchen & Hot Food Pass',
+          desc: 'Stove, double fridge, sink & glass service pass. Handles main dining tickets, Wait Lounge House Fries, and Wrong-Order Remakes.'
+        };
+        scene.add(kitchenBase);
+
+        // Stove, Double Fridge & Sink Props inside Kitchen
+        const stove = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.9, 1.1), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.7 }));
+        stove.position.set(4.0, 0.81, -8.6);
+        const fridge = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.1, 1.1), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.6 }));
+        fridge.position.set(11.8, 1.41, -8.8);
+        const passCounter = new THREE.Mesh(new THREE.BoxGeometry(10.5, 0.95, 0.7), new THREE.MeshStandardMaterial({ color: 0xcbd5e1 }));
+        passCounter.position.set(7.5, 0.83, -6.3);
+        scene.add(stove, fridge, passCounter);
+
+        // 3. Upper Row Communal Tables: 6 + 10 + 6 = 22 Seats (Seats 22..43)
+        createTableWithSeats('Upper Communal West (6-pax)', -4.2, -2.6, 0.36, 2.7, 1.15, 6, false);
+        createTableWithSeats('Center Grand Communal (10-pax)', 2.4, -2.6, 0.36, 4.4, 1.2, 10, false);
+        createTableWithSeats('Upper Communal East (6-pax)', 9.2, -2.6, 0.36, 2.7, 1.15, 6, false);
+
+        // 4. Lower-Right 2x2 Grid of 4-Seaters = 16 Seats (Seats 44..59) -> TOTAL = 60 SEATS!
+        const gridCoords = [
+          [3.6, 2.4], [8.8, 2.4],
+          [3.6, 6.0], [8.8, 6.0]
+        ];
+        gridCoords.forEach(([gx, gz], gIdx) => {
+          createTableWithSeats(`Dining Grid Table G${gIdx + 1}`, gx, gz, 0.36, 1.65, 1.35, 4, false);
+        });
+
+        // 5. Far-Right 'BOARD GAMES & BOOKS' Library Wall + MI Match Projector Screen
+        const libraryWall = new THREE.Mesh(
+          new THREE.BoxGeometry(0.75, 2.4, 9.6),
+          new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.65 })
+        );
+        libraryWall.position.set(14.5, 1.56, 0.8);
+        libraryWall.userData = {
+          inspectType: 'zone',
+          title: 'Board Games & Books Library Wall',
+          desc: 'Catan, Codenames, Ticket to Ride, Jenga & craft brewing books. Board-game tables average 115m+ dwell unless 90-min limit is toggled ON.'
+        };
+        scene.add(libraryWall);
+
+        // Colorful Board-Game Boxes on Shelf
+        const gameColors = [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b, 0xa855f7];
+        for (let i = 0; i < 18; i++) {
+          const box = new THREE.Mesh(
+            new THREE.BoxGeometry(0.45, 0.22, 0.38),
+            new THREE.MeshStandardMaterial({ color: gameColors[i % gameColors.length] })
+          );
+          box.position.set(14.35, 0.8 + (i % 4) * 0.48, -3.2 + Math.floor(i / 4) * 1.65);
+          scene.add(box);
+        }
+
+        // MI Live Match Projector Screen on NE Wall
+        sceneRefs.projectorScreen = new THREE.Mesh(
+          new THREE.BoxGeometry(0.14, 2.1, 3.8),
+          new THREE.MeshStandardMaterial({
+            map: makeTextCanvasTexture('🏏 MI LIVE MATCH SCREENING', '#064e3b', '#fde047', 512, 256, '800 32px Inter', '#10b981'),
+            emissive: 0x065f46,
+            emissiveIntensity: 0.2
+          })
+        );
+        sceneRefs.projectorScreen.position.set(14.7, 2.4, -3.5);
+        scene.add(sceneRefs.projectorScreen);
+
+        // 6. Profit Zone 3D Prisms (Shown in 'profit' SimCity Lens)
+        const pLounge = createProfitPrism(-4.2, 4.4, 3.4, 4.2, 0x10b981, 'FL-III Wait Lounge');
+        const pHall = createProfitPrism(3.5, 0.5, 12.0, 9.5, 0xf59e0b, 'Main Dining Hall');
+        const pBar = createProfitPrism(-4.3, -7.2, 8.6, 2.2, 0x38bdf8, '8-Tap Craft Bar');
+        sceneRefs.profitPrisms.push(pLounge, pHall, pBar);
+
+        // 7. Golden Retriever Mascot 'Bruno'
+        sceneRefs.bruno = createBrunoMascot();
+        sceneRefs.bruno.position.set(3.2, 0.36, 0.4);
+        scene.add(sceneRefs.bruno);
+
+        // 8. Mumbai Monsoon 3D Rain Particle System
+        const rainGeo = new THREE.BufferGeometry();
+        const rainCount = 900;
+        const rainPos = new Float32Array(rainCount * 3);
+        for (let i = 0; i < rainCount; i++) {
+          rainPos[i * 3] = (Math.random() - 0.5) * 34;
+          rainPos[i * 3 + 1] = Math.random() * 14;
+          rainPos[i * 3 + 2] = (Math.random() - 0.5) * 26;
+        }
+        rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+        sceneRefs.rainSystem = new THREE.Points(
+          rainGeo,
+          new THREE.PointsMaterial({ color: 0x7dd3fc, size: 0.14, transparent: true, opacity: 0.75 })
+        );
+        sceneRefs.rainSystem.visible = false;
+        scene.add(sceneRefs.rainSystem);
+
+        // 9. Spawn Floor & Bar Staff + Initial Seated Parties
+        spawnStaffMembers();
+        seedInitialTaproomState();
+      }
+
+      function createProfitPrism(x, z, w, d, color, label) {
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(w, 1.4, d),
+          new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.28, wireframe: false })
+        );
+        mesh.position.set(x, 0.9, z);
+        mesh.visible = false;
+        mesh.userData = { label };
+        scene.add(mesh);
+        return mesh;
+      }
+
+      function registerSeatSlot(label, x, y, z, rotY, zoneType) {
+        const idx = sceneRefs.seatSlots.length;
+        // Safety-Lens Seat Pad
+        const pad = new THREE.Mesh(
+          new THREE.CircleGeometry(0.32, 14),
+          new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide })
+        );
+        pad.rotation.x = -Math.PI / 2;
+        pad.position.set(x, y + 0.02, z);
+        pad.visible = false;
+        scene.add(pad);
+        sceneRefs.seatPads.push(pad);
+
+        // Dynamic Table Prop (Pint Glass / Food Plate / Reserved Marker)
+        const propGroup = new THREE.Group();
+        propGroup.position.set(x, y + 0.78, z);
+        const glass = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.06, 0.05, 0.18, 8),
+          new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 0.3 })
+        );
+        glass.position.set(0, 0.09, 0);
+        propGroup.add(glass);
+        propGroup.visible = false;
+        scene.add(propGroup);
+
+        sceneRefs.seatSlots.push({
+          id: idx,
+          label,
+          pos: new THREE.Vector3(x, y, z),
+          rotY,
+          zoneType, // 'patio', 'bar', 'communal', 'grid'
+          occupantPartyId: null,
+          occupantMemberIdx: -1,
+          pad,
+          propGroup
+        });
+      }
+
+      function createTableWithSeats(name, cx, cz, floorY, w, d, seatCount, isPatio) {
+        const group = new THREE.Group();
+        const top = new THREE.Mesh(
+          new THREE.BoxGeometry(w, 0.09, d),
+          new THREE.MeshStandardMaterial({ color: isPatio ? 0xb45309 : 0x92400e, roughness: 0.45 })
+        );
+        top.position.set(cx, floorY + 0.74, cz);
+        top.castShadow = true;
+        top.receiveShadow = true;
+        top.userData = {
+          inspectType: 'zone',
+          title: `${name} (${seatCount} Seats)`,
+          desc: isPatio
+            ? 'Outdoor wooden patio table (4 seats). Closes during Monsoon downpours.'
+            : 'Honey-oak indoor dining table. Supports dynamic communal seat packing in Mode 3.'
+        };
+        group.add(top);
+
+        // Table Legs
+        [[-w * 0.38, -d * 0.35], [w * 0.38, -d * 0.35], [-w * 0.38, d * 0.35], [w * 0.38, d * 0.35]].forEach(([lx, lz]) => {
+          const leg = new THREE.Mesh(
+            new THREE.BoxGeometry(0.09, 0.74, 0.09),
+            new THREE.MeshStandardMaterial({ color: 0x451a03 })
+          );
+          leg.position.set(cx + lx, floorY + 0.37, cz + lz);
+          group.add(leg);
+        });
+
+        // Optional Board-Game Box on Communal Table
+        if (!isPatio && seatCount >= 6) {
+          const gameBox = new THREE.Mesh(
+            new THREE.BoxGeometry(0.42, 0.08, 0.34),
+            new THREE.MeshStandardMaterial({ color: 0xef4444 })
+          );
+          gameBox.position.set(cx, floorY + 0.82, cz);
+          group.add(gameBox);
+        }
+
+        scene.add(group);
+
+        // Register Individual Seats along North & South edges of table
+        const perSide = seatCount / 2;
+        const stepX = w / (perSide + 0.4);
+        for (let i = 0; i < perSide; i++) {
+          const sx = cx - (w / 2) + stepX * (i + 0.7);
+          // North side facing South (0)
+          registerSeatSlot(`${name} S${i + 1}`, sx, floorY, cz - d / 2 - 0.36, 0, isPatio ? 'patio' : (seatCount >= 6 ? 'communal' : 'grid'));
+          // South side facing North (Math.PI)
+          registerSeatSlot(`${name} S${perSide + i + 1}`, sx, floorY, cz + d / 2 + 0.36, Math.PI, isPatio ? 'patio' : (seatCount >= 6 ? 'communal' : 'grid'));
+        }
+      }
+
+      function createBrunoMascot() {
+        const g = new THREE.Group();
+        const furMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.7 });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.28, 0.62), furMat);
+        body.position.y = 0.26;
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 0.28), furMat);
+        head.position.set(0, 0.42, 0.32);
+        const tail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.26), furMat);
+        tail.position.set(0, 0.36, -0.38);
+        g.add(body, head, tail);
+        g.userData = {
+          inspectType: 'bruno',
+          title: '🐕 Bruno (Doolally Golden Retriever Mascot)',
+          desc: 'Pet-friendly taproom mascot patrolling the indoor dining hall and patio. Boosts Guest Mood & Venue Rating!'
+        };
+        return g;
+      }
+
+      function createHumanAgent(shirtColor, isStaff) {
+        const group = new THREE.Group();
+        const skinMat = new THREE.MeshStandardMaterial({ color: 0xfdba74, roughness: 0.6 });
+        const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.55 });
+        const pantsMat = new THREE.MeshStandardMaterial({ color: isStaff ? 0x0f172a : 0x1e293b, roughness: 0.75 });
+
+        const legL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.46, 0.14), pantsMat);
+        legL.position.set(-0.09, 0.23, 0);
+        const legR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.46, 0.14), pantsMat);
+        legR.position.set(0.09, 0.23, 0);
+
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.48, 0.2), shirtMat);
+        torso.position.set(0, 0.7, 0);
+        torso.castShadow = true;
+
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), skinMat);
+        head.position.set(0, 1.08, 0);
+
+        const armL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.42, 0.11), shirtMat);
+        armL.position.set(-0.23, 0.7, 0);
+        const armR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.42, 0.11), shirtMat);
+        armR.position.set(0.23, 0.7, 0);
+
+        // Mood Halo Ring (Visible in 'mood' SimCity Lens)
+        const halo = new THREE.Mesh(
+          new THREE.RingGeometry(0.22, 0.3, 16),
+          new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide })
+        );
+        halo.rotation.x = -Math.PI / 2;
+        halo.position.y = 0.04;
+        halo.visible = false;
+
+        // Tray for Wrong Order / Delivery visualization
+        const tray = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.18, 0.18, 0.03, 12),
+          new THREE.MeshStandardMaterial({ color: 0xf43f5e, emissive: 0xe11d48, emissiveIntensity: 0.4 })
+        );
+        tray.position.set(0.22, 0.88, 0.22);
+        tray.visible = false;
+
+        group.add(legL, legR, torso, head, armL, armR, halo, tray);
+        group.userData.rig = { legL, legR, torso, head, armL, armR, halo, tray, walkPhase: Math.random() * 6.28 };
+        return group;
+      }
+
+      // =========================================================================
+      // 4. AGENT & DISCRETE-EVENT SIMULATION ENGINE
+      // =========================================================================
+      const SHIRT_PALETTE = [0x38bdf8, 0xf59e0b, 0x10b981, 0xa855f7, 0xf472b6, 0xf97316, 0x6366f1];
+
+      function spawnStaffMembers() {
+        SIM.staff.forEach(s => scene.remove(s.mesh));
+        SIM.staff = [];
+        const roles = ['Bartender', 'Floor Server', 'Kitchen Runner', 'Host / Kiosk', 'Floor Server 2', 'Barback'];
+        const homePositions = [
+          new THREE.Vector3(-4.5, 0.36, -8.3),
+          new THREE.Vector3(3.0, 0.36, -4.8),
+          new THREE.Vector3(6.8, 0.36, -5.2),
+          new THREE.Vector3(-3.0, 0.08, 6.2),
+          new THREE.Vector3(7.5, 0.36, 1.5),
+          new THREE.Vector3(-7.0, 0.36, -8.3)
+        ];
+        for (let i = 0; i < SIM.staffCount; i++) {
+          const mesh = createHumanAgent(0xfacc15, true);
+          const home = homePositions[i % homePositions.length].clone();
+          mesh.position.copy(home);
+          scene.add(mesh);
+          SIM.staff.push({
+            id: i + 1,
+            role: roles[i % roles.length],
+            mesh,
+            homePos: home,
+            targetPos: home.clone(),
+            task: 'idle', // 'idle', 'fetch_wrong', 'return_kitchen'
+            taskPartyId: null
+          });
+        }
+      }
+
+      function createPartyEntity(size, isMugClub, customName, isVip) {
+        const id = SIM.nextPartyId++;
+        const archetypes = ['Casual Sippers', 'Mug Club Regulars', 'Board-Game Campers', 'Impatient Walk-Ins', 'Social Group'];
+        const archetype = isMugClub ? 'Mug Club Regulars' : archetypes[Math.floor(Math.random() * archetypes.length)];
+        const basePatience = (SIM.situation === 'offpeak' ? 14 : 22) * SIM.patienceMult;
+        const baseDwell = (archetype === 'Board-Game Campers' ? 115 : 78) * SIM.dwellMult;
+
+        const members = [];
+        for (let m = 0; m < size; m++) {
+          const color = isVip ? 0x10b981 : SHIRT_PALETTE[(id + m) % SHIRT_PALETTE.length];
+          const mesh = createHumanAgent(color, false);
+          mesh.position.set(-4.2 + (m % 2) * 0.55, 0.05, 8.6 + Math.floor(m / 2) * 0.55);
+          mesh.traverse(child => {
+            child.userData = Object.assign({}, child.userData, { inspectType: 'party', partyId: id });
+          });
+          scene.add(mesh);
+          members.push({
+            index: m,
+            mesh,
+            seatSlotId: null,
+            targetPos: mesh.position.clone(),
+            microState: 'with_party', // 'with_party', 'going_smoke', 'at_smoke', 'returning_smoke', 'going_washroom', 'in_cubicle', 'wash_queue', 'returning_washroom'
+            microTimer: 0,
+            microType: null, // 'smoke' or 'call'
+            cubicleId: null
+          });
+        }
+
+        // Optional VIP Sims Plumbob Diamond above member 0
+        let plumbob = null;
+        if (isVip) {
+          plumbob = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.24, 0),
+            new THREE.MeshBasicMaterial({ color: 0x10b981 })
+          );
+          plumbob.position.set(0, 1.72, 0);
+          members[0].mesh.add(plumbob);
+          SIM.vipPartyId = id;
+        }
+
+        const party = {
+          id,
+          name: customName || `Party #${id}`,
+          size,
+          isMugClub,
+          isVip: !!isVip,
+          archetype,
+          state: 'arriving', // 'arriving', 'waiting_threshold', 'waiting_lounge', 'seated', 'leaving'
+          waitElapsed: 0,
+          patience: basePatience + (Math.random() * 6 - 3),
+          dwellElapsed: 0,
+          dwellTarget: baseDwell + (Math.random() * 18 - 9),
+          loungeOrdered: false,
+          hasWrongOrder: false,
+          wrongOrderTimer: 0,
+          remakeCount: 0,
+          members
+        };
+        SIM.parties.push(party);
+        return party;
+      }
+
+      function assignSeatsToParty(party) {
+        const available = sceneRefs.seatSlots.filter(s => {
+          if (s.occupantPartyId !== null) return false;
+          if (SIM.monsoon && s.zoneType === 'patio') return false;
+          return true;
+        });
+        if (available.length < party.size) return false;
+
+        // If Smart Communal Packing is OFF, require contiguous block or single table
+        let chosen = [];
+        if (SIM.smartPack || SIM.mode === 3) {
+          chosen = available.slice(0, party.size);
+        } else {
+          // Group by zoneType or proximity
+          const byZone = {};
+          available.forEach(s => {
+            const key = s.label.split(' S')[0];
+            if (!byZone[key]) byZone[key] = [];
+            byZone[key].push(s);
+          });
+          for (const key in byZone) {
+            if (byZone[key].length >= party.size) {
+              chosen = byZone[key].slice(0, party.size);
+              break;
+            }
+          }
+          if (chosen.length < party.size && party.size <= 2) {
+            chosen = available.slice(0, party.size);
+          }
+        }
+
+        if (chosen.length < party.size) return false;
+
+        chosen.forEach((slot, idx) => {
+          slot.occupantPartyId = party.id;
+          slot.occupantMemberIdx = idx;
+          slot.propGroup.visible = true;
+          party.members[idx].seatSlotId = slot.id;
+          party.members[idx].targetPos.copy(slot.pos);
+          party.members[idx].microState = 'with_party';
+        });
+
+        party.state = 'seated';
+        recordFoodAndDrinkSale(party, false);
+        return true;
+      }
+
+      function releasePartySeats(party) {
+        party.members.forEach(m => {
+          if (m.seatSlotId !== null) {
+            const slot = sceneRefs.seatSlots[m.seatSlotId];
+            if (slot) {
+              slot.occupantPartyId = null;
+              slot.occupantMemberIdx = -1;
+              slot.propGroup.visible = false;
+            }
+            m.seatSlotId = null;
+          }
+          if (m.cubicleId !== null) {
+            const cub = SIM.cubicles.find(c => c.id === m.cubicleId);
+            if (cub && cub.occupant === m) cub.occupant = null;
+            m.cubicleId = null;
+          }
+        });
+      }
+
+      function recordFoodAndDrinkSale(party, isLoungeTaster) {
+        const tap = TAPS[Math.floor(Math.random() * TAPS.length)];
+        if (isLoungeTaster) {
+          const rev = party.size * 200 + 350; // 180ml Tasters + House Fries
+          SIM.loungeRev += rev;
+          SIM.beerRev += party.size * 200;
+          SIM.foodRev += 350;
+          SIM.friesStock = Math.max(0, SIM.friesStock - 1);
+          tap.liters = Math.max(0, tap.liters - party.size * 0.18);
+          tap.sold += party.size;
+          return;
+        }
+
+        const rounds = SIM.situation === 'cricket' ? 2.6 : 2.1;
+        const pours = Math.round(party.size * rounds);
+        const unitPrice = party.isMugClub ? 330 : 315;
+        const bRev = pours * unitPrice;
+        const dishes = Math.max(1, Math.round(pours * 0.72));
+        const fRev = dishes * 390;
+
+        SIM.beerRev += bRev;
+        SIM.foodRev += fRev;
+        if (party.isMugClub) SIM.mugRev += pours * 75;
+        SIM.totalPours += pours;
+        SIM.totalDishes += dishes;
+        SIM.friesStock = Math.max(0, SIM.friesStock - Math.ceil(dishes * 0.4));
+
+        // Deplete tap keg
+        const vol = pours * (party.isMugClub ? 0.5 : 0.33);
+        tap.liters = Math.max(0, tap.liters - vol);
+        tap.pours += pours;
+        tap.sold += pours;
+        if (tap.pours >= 75 && tap.swapTimer <= 0) {
+          tap.swapTimer = 4.0; // 4-min keg swap lockout
+          tap.pours = 0;
+          if (SIM.backupKegs > 0) {
+            SIM.backupKegs--;
+            tap.liters = 30.0;
+          }
+        }
+
+        // Check Wrong Order & Remake Loop probability
+        const effectiveWrongProb = (SIM.wrongRate / 100) * (SIM.mode === 3 ? 0.3 : 1.0);
+        if (Math.random() < effectiveWrongProb) {
+          triggerWrongOrderOnParty(party);
+        }
+      }
+
+      function triggerWrongOrderOnParty(party) {
+        if (!party || party.hasWrongOrder) return;
+        party.hasWrongOrder = true;
+        party.wrongOrderTimer = 10.0; // +10 min remake dwell penalty
+        party.dwellTarget += 10.0;
+        party.remakeCount++;
+        SIM.remakeCount++;
+        const waste = Math.random() < 0.65 ? 125 : 80; // ₹125 food or ₹80 beer waste COGS
+        SIM.remakeWasteCost += waste;
+        SIM.venueRating = Math.max(300, SIM.venueRating - 7);
+        addTicker(`❌ Wrong Order sent out at ${party.name}! Server returning dish to Kitchen Pass (+10m remake, ₹${waste} COGS waste).`);
+
+        // Dispatch a Floor Server to fetch & remake
+        const freeServer = SIM.staff.find(s => s.task === 'idle') || SIM.staff[0];
+        if (freeServer && party.members[0]) {
+          freeServer.task = 'fetch_wrong';
+          freeServer.taskPartyId = party.id;
+          freeServer.targetPos.copy(party.members[0].mesh.position);
+          freeServer.mesh.userData.rig.tray.visible = true;
+        }
+      }
+
+      function triggerSmokeOrCallBreak(party) {
+        if (!party || party.state !== 'seated') return;
+        const idleMember = party.members.find(m => m.microState === 'with_party' && m.seatSlotId !== null);
+        if (!idleMember) return;
+        idleMember.microState = 'going_smoke';
+        idleMember.microType = Math.random() < 0.55 ? 'smoke' : 'call';
+        idleMember.microTimer = 4.5 + Math.random() * 3.5; // 4.5 to 8 simulated mins
+        // Walk down yellow 3-step threshold out to Road No. 3 curb smoking corner
+        const curbX = -5.6 + (Math.random() * 2.2 - 1.1);
+        const curbZ = 9.2 + Math.random() * 0.6;
+        idleMember.targetPos.set(curbX, 0.04, curbZ);
+        SIM.smokeTotalTrips++;
+        addTicker(`${idleMember.microType === 'smoke' ? '🚬' : '📞'} Guest from ${party.name} stepped out to Road No. 3 curb (seat held reserved).`);
+      }
+
+      function triggerWashroomTrip(party) {
+        if (!party || party.state !== 'seated') return;
+        const idleMember = party.members.find(m => m.microState === 'with_party' && m.seatSlotId !== null);
+        if (!idleMember) return;
+        idleMember.microState = 'going_washroom';
+        idleMember.microTimer = 3.5 + Math.random() * 2.0;
+        // Walk toward top-left pink WASHROOMS entrance (-9.5, -5.5)
+        idleMember.targetPos.set(-10.4, 0.05, -5.8);
+        SIM.washroomTotalTrips++;
+      }
+
+      function seedInitialTaproomState() {
+        // Seed 10 initial parties (approx 36 seated + 4 waiting)
+        const sizes = [4, 4, 2, 6, 4, 2, 4, 4, 2, 4];
+        sizes.forEach((sz, i) => {
+          const p = createPartyEntity(sz, i % 3 === 0, null, false);
+          if (i < 9) {
+            assignSeatsToParty(p);
+            p.dwellElapsed = Math.random() * 45;
+            p.members.forEach(m => {
+              if (m.seatSlotId !== null) {
+                m.mesh.position.copy(sceneRefs.seatSlots[m.seatSlotId].pos);
+              }
+            });
+          } else {
+            p.state = 'waiting_threshold';
+            p.members.forEach((m, idx) => {
+              m.mesh.position.set(-2.4 + (idx % 2) * 0.5, 0.08, 2.4 + Math.floor(idx / 2) * 0.5);
+            });
+          }
+        });
+      }
+
+      // =========================================================================
+      // 5. SIMULATION TICK & GOD MODE AUTONOMOUS DIRECTOR
+      // =========================================================================
+      let arrivalAccumulator = 0;
+
+      function stepSimulation(dtSec) {
+        if (SIM.paused) return;
+        const dtMin = (dtSec * SIM.speed) / 6.0; // 1x = 10 sim mins per real min; 30x = rapid observation
+        SIM.simMinutes += dtMin;
+
+        // God Mode Autonomous Chaos Engine
+        if (SIM.godMode) {
+          SIM.godTimer += dtSec * SIM.speed;
+          if (SIM.godTimer >= 16) {
+            SIM.godTimer = 0;
+            runGodModeDirector();
+          }
+        }
+
+        // Poisson Arrivals
+        const effectiveLambda = SIM.lambda * (SIM.happyHour ? 1.2 : 1.0);
+        arrivalAccumulator += (effectiveLambda / 60.0) * dtMin;
+        if (arrivalAccumulator >= 1.0) {
+          arrivalAccumulator -= 1.0;
+          const r = Math.random();
+          const sz = r < 0.38 ? 2 : (r < 0.82 ? 4 : 6);
+          const p = createPartyEntity(sz, Math.random() < 0.25, null, false);
+          // Immediate seating if open
+          if (!assignSeatsToParty(p)) {
+            const loungeCount = SIM.parties.filter(x => x.state === 'waiting_lounge').reduce((a, b) => a + b.size, 0);
+            if ((SIM.mode === 2 || SIM.mode === 3) && loungeCount + p.size <= 16) {
+              p.state = 'waiting_lounge';
+              if (Math.random() < 0.72) {
+                p.loungeOrdered = true;
+                recordFoodAndDrinkSale(p, true);
+              }
+            } else {
+              p.state = 'waiting_threshold';
+            }
+          }
+        }
+
+        // Keg swap countdowns
+        TAPS.forEach(t => {
+          if (t.swapTimer > 0) t.swapTimer = Math.max(0, t.swapTimer - dtMin);
+        });
+
+        // Update Parties & Micro-Behaviors
+        let thresholdQueueGuests = 0;
+        let loungeQueueGuests = 0;
+
+        for (let i = SIM.parties.length - 1; i >= 0; i--) {
+          const p = SIM.parties[i];
+
+          if (p.state === 'waiting_threshold' || p.state === 'waiting_lounge') {
+            p.waitElapsed += dtMin;
+            // Try seating
+            if (assignSeatsToParty(p)) {
+              SIM.venueRating = Math.min(999, SIM.venueRating + 2);
+              continue;
+            }
+            // Position in queue
+            if (p.state === 'waiting_lounge') {
+              p.members.forEach((m, idx) => {
+                const qIdx = loungeQueueGuests + idx;
+                m.targetPos.set(-4.8 + (qIdx % 4) * 0.55, 0.08, 2.7 + Math.floor(qIdx / 4) * 0.85);
+              });
+              loungeQueueGuests += p.size;
+            } else {
+              p.members.forEach((m, idx) => {
+                const qIdx = thresholdQueueGuests + idx;
+                if (qIdx < 8) {
+                  // Internal vestibule near yellow steps
+                  m.targetPos.set(-2.2 + (qIdx % 2) * 0.55, 0.08, 2.0 + Math.floor(qIdx / 2) * 0.75);
+                } else {
+                  // Spills onto Road No. 3 sidewalk!
+                  const outIdx = qIdx - 8;
+                  m.targetPos.set(-4.2 - (outIdx % 6) * 0.65, 0.04, 9.4 + Math.floor(outIdx / 6) * 0.55);
+                }
+              });
+              thresholdQueueGuests += p.size;
+            }
+
+            // Reneging (Walk-Away) check
+            const effectivePatience = p.patience * (p.loungeOrdered ? 1.65 : 1.0);
+            if (p.waitElapsed > effectivePatience) {
+              SIM.lostRev += p.size * 590;
+              SIM.venueRating = Math.max(300, SIM.venueRating - 4);
+              addTicker(`🚶 ${p.name} (${p.size} pax) walked away after ${Math.round(p.waitElapsed)}m wait!`);
+              p.members.forEach(m => scene.remove(m.mesh));
+              SIM.parties.splice(i, 1);
+              continue;
+            }
+          } else if (p.state === 'seated') {
+            p.dwellElapsed += dtMin;
+
+            // Wrong-order remake countdown
+            if (p.hasWrongOrder) {
+              p.wrongOrderTimer -= dtMin;
+              if (p.wrongOrderTimer <= 0) {
+                p.hasWrongOrder = false;
+                SIM.venueRating = Math.min(999, SIM.venueRating + 3);
+                addTicker(`✅ Hot remake delivered to ${partyLabel(p)}!`);
+              }
+            }
+
+            // Random Smoke/Call Step-Outs & Washroom Trips
+            if (Math.random() < (SIM.smokeRate / 100) * 0.025 * dtMin) {
+              triggerSmokeOrCallBreak(p);
+            }
+            if (Math.random() < (SIM.washroomRate / 100) * 0.03 * dtMin) {
+              triggerWashroomTrip(p);
+            }
+
+            // Update each member's micro-state
+            p.members.forEach(m => {
+              updateMemberMicroFlow(p, m, dtMin);
+            });
+
+            // Check departure
+            const maxDwell = (SIM.gameCap && p.archetype === 'Board-Game Campers')
+              ? Math.min(p.dwellTarget, 90)
+              : p.dwellTarget;
+            if (p.dwellElapsed >= maxDwell) {
+              releasePartySeats(p);
+              p.state = 'leaving';
+              p.members.forEach(m => {
+                m.microState = 'with_party';
+                m.targetPos.set(-3.8, 0.05, 11.2);
+              });
+            }
+          } else if (p.state === 'leaving') {
+            const lead = p.members[0];
+            if (!lead || lead.mesh.position.z > 10.6) {
+              p.members.forEach(m => scene.remove(m.mesh));
+              SIM.parties.splice(i, 1);
+            }
+          }
+        }
+
+        // Update Washroom Cubicle Doors
+        SIM.cubicles.forEach(cub => {
+          const targetAngle = cub.occupant ? 0 : Math.PI * 0.45;
+          cub.doorAngle += (targetAngle - cub.doorAngle) * 0.15;
+          if (cub.doorPivot) cub.doorPivot.rotation.y = cub.doorAngle;
+        });
+
+        // Update Compliance & Spillover
+        const externalSpillover = Math.max(0, thresholdQueueGuests - 8);
+        if (externalSpillover > 4) {
+          SIM.breachMinutes += dtMin;
+        }
+        updateComplianceVisuals(externalSpillover, thresholdQueueGuests);
+      }
+
+      function partyLabel(p) {
+        return p ? p.name : 'Table';
+      }
+
+      function updateMemberMicroFlow(party, m, dtMin) {
+        if (m.microState === 'going_smoke') {
+          if (m.mesh.position.distanceTo(m.targetPos) < 0.35) {
+            m.microState = 'at_smoke';
+          }
+        } else if (m.microState === 'at_smoke') {
+          m.microTimer -= dtMin;
+          if (m.microTimer <= 0) {
+            m.microState = 'returning_smoke';
+            if (m.seatSlotId !== null) m.targetPos.copy(sceneRefs.seatSlots[m.seatSlotId].pos);
+          }
+        } else if (m.microState === 'returning_smoke' || m.microState === 'returning_washroom') {
+          if (m.mesh.position.distanceTo(m.targetPos) < 0.35) {
+            m.microState = 'with_party';
+          }
+        } else if (m.microState === 'going_washroom') {
+          if (m.mesh.position.distanceTo(m.targetPos) < 0.45) {
+            const freeCub = SIM.cubicles.find(c => c.occupant === null);
+            if (freeCub) {
+              freeCub.occupant = m;
+              m.cubicleId = freeCub.id;
+              m.microState = 'in_cubicle';
+              m.targetPos.copy(freeCub.pos);
+            } else {
+              m.microState = 'wash_queue';
+              m.targetPos.set(-10.8, 0.05, -5.2);
+            }
+          }
+        } else if (m.microState === 'wash_queue') {
+          const freeCub = SIM.cubicles.find(c => c.occupant === null);
+          if (freeCub) {
+            freeCub.occupant = m;
+            m.cubicleId = freeCub.id;
+            m.microState = 'in_cubicle';
+            m.targetPos.copy(freeCub.pos);
+          }
+        } else if (m.microState === 'in_cubicle') {
+          m.microTimer -= dtMin;
+          if (m.microTimer <= 0) {
+            const cub = SIM.cubicles.find(c => c.id === m.cubicleId);
+            if (cub) cub.occupant = null;
+            m.cubicleId = null;
+            m.microState = 'returning_washroom';
+            if (m.seatSlotId !== null) m.targetPos.copy(sceneRefs.seatSlots[m.seatSlotId].pos);
+          }
+        }
+      }
+
+      function updateComplianceVisuals(externalSpillover, thresholdQueueGuests) {
+        const pill = document.getElementById('compliance-pill');
+        if (externalSpillover >= 5) {
+          pill.className = 'compliance-pill comp-red';
+          pill.textContent = `🔴 MCGM <1.50m BREACH (${externalSpillover} outside)`;
+          if (sceneRefs.mcgmZoneMesh) sceneRefs.mcgmZoneMesh.material.color.setHex(0xf43f5e);
+        } else if (externalSpillover >= 1 || thresholdQueueGuests > 6) {
+          pill.className = 'compliance-pill comp-amber';
+          pill.textContent = `🟡 MCGM Tight (${externalSpillover} kerb spillover)`;
+          if (sceneRefs.mcgmZoneMesh) sceneRefs.mcgmZoneMesh.material.color.setHex(0xf59e0b);
+        } else {
+          pill.className = 'compliance-pill comp-green';
+          pill.textContent = '🟢 MCGM 1.50m & BMC 1.0m OK';
+          if (sceneRefs.mcgmZoneMesh) sceneRefs.mcgmZoneMesh.material.color.setHex(0x10b981);
+        }
+        if (sceneRefs.bmcLineMesh) {
+          sceneRefs.bmcLineMesh.material.color.setHex(thresholdQueueGuests > 6 ? 0xf43f5e : 0x10b981);
+        }
+      }
+
+      function runGodModeDirector() {
+        const roll = Math.random();
+        if (roll < 0.28) {
+          const keys = Object.keys(SITUATIONS);
+          const nextSit = keys[Math.floor(Math.random() * keys.length)];
+          applySituationPreset(nextSit, true);
+          addGodLog(`Probability Engine shifted to "${SITUATIONS[nextSit].label}" (λ=${SIM.lambda}/hr).`);
+        } else if (roll < 0.52) {
+          const p = createPartyEntity(6, false, 'Surprise 6-Pax Walk-In', false);
+          if (!assignSeatsToParty(p)) p.state = SIM.mode >= 2 ? 'waiting_lounge' : 'waiting_threshold';
+          addGodLog(`Surprise 6-pax group arrived at Road No. 3 entrance!`);
+        } else if (roll < 0.72) {
+          const seated = SIM.parties.filter(p => p.state === 'seated');
+          if (seated.length) {
+            const target = seated[Math.floor(Math.random() * seated.length)];
+            triggerWrongOrderOnParty(target);
+            addGodLog(`Kitchen ticket mix-up triggered Wrong Order at ${target.name}.`);
+          }
+        } else if (roll < 0.88) {
+          const seated = SIM.parties.filter(p => p.state === 'seated');
+          if (seated.length) {
+            triggerSmokeOrCallBreak(seated[0]);
+            if (seated[1]) triggerWashroomTrip(seated[1]);
+            addGodLog(`Mid-match break wave: guests stepped out for Smoke/Call & Washrooms.`);
+          }
+        } else {
+          TAPS[0].liters = Math.max(0.5, TAPS[0].liters - 14);
+          addGodLog(`High demand spike drained ${TAPS[0].name} keg (${TAPS[0].liters.toFixed(1)}L left).`);
+        }
+      }
+
+      // =========================================================================
+      // 6. 3D ANIMATION LOOP, LENSES & PROJECTED FLOATING LABELS
+      // =========================================================================
+      function animateAgentsAndScene(dt) {
+        const t = performance.now() * 0.004;
+
+        // Rain particles
+        if (sceneRefs.rainSystem && sceneRefs.rainSystem.visible) {
+          const pos = sceneRefs.rainSystem.geometry.attributes.position.array;
+          for (let i = 0; i < pos.length; i += 3) {
+            pos[i + 1] -= dt * 16;
+            if (pos[i + 1] < 0) pos[i + 1] = 14;
+          }
+          sceneRefs.rainSystem.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // Bruno Patrol
+        if (sceneRefs.bruno) {
+          const dist = sceneRefs.bruno.position.distanceTo(sceneRefs.brunoTarget);
+          if (dist < 0.4) {
+            sceneRefs.brunoTarget.set(-2 + Math.random() * 12, 0.36, -4 + Math.random() * 9);
+          } else {
+            const dir = sceneRefs.brunoTarget.clone().sub(sceneRefs.bruno.position).normalize();
+            sceneRefs.bruno.position.addScaledVector(dir, dt * 1.4);
+            sceneRefs.bruno.lookAt(sceneRefs.brunoTarget);
+          }
+        }
+
+        // Animate Staff
+        SIM.staff.forEach(s => {
+          if (s.task === 'fetch_wrong') {
+            if (s.mesh.position.distanceTo(s.targetPos) < 0.65) {
+              s.task = 'return_kitchen';
+              s.targetPos.set(6.5, 0.36, -5.6); // Kitchen Pass
+            }
+          } else if (s.task === 'return_kitchen') {
+            if (s.mesh.position.distanceTo(s.targetPos) < 0.65) {
+              s.task = 'idle';
+              s.targetPos.copy(s.homePos);
+              s.mesh.userData.rig.tray.visible = false;
+            }
+          }
+          moveAndAnimateHuman(s.mesh, s.targetPos, dt * 2.6, false);
+        });
+
+        // Animate Guest Parties & Collect Projected Labels
+        const labelsLayer = document.getElementById('labels-layer');
+        const activeTags = [];
+
+        SIM.parties.forEach(p => {
+          p.members.forEach((m, idx) => {
+            const isSeatedInPlace =
+              p.state === 'seated' &&
+              m.microState === 'with_party' &&
+              m.mesh.position.distanceTo(m.targetPos) < 0.25;
+
+            moveAndAnimateHuman(m.mesh, m.targetPos, dt * 2.3, isSeatedInPlace);
+            if (isSeatedInPlace && m.seatSlotId !== null) {
+              m.mesh.rotation.y = sceneRefs.seatSlots[m.seatSlotId].rotY;
+            }
+
+            // Guest Mood Lens Halo
+            const halo = m.mesh.userData.rig.halo;
+            halo.visible = (SIM.lens === 'mood');
+            if (halo.visible) {
+              const c = p.hasWrongOrder ? 0xf43f5e : (p.state === 'seated' ? 0x10b981 : 0xf59e0b);
+              halo.material.color.setHex(c);
+            }
+
+            // Projected 3D Labels for Micro-Behaviors, Wrong Orders, or VIP Plumbob
+            if (m.microState === 'going_smoke' || m.microState === 'at_smoke') {
+              activeTags.push({
+                pos: m.mesh.position,
+                text: m.microType === 'smoke' ? '🚬 Smoke Break' : '📞 On a Call',
+                cls: 'break'
+              });
+            } else if (m.microState === 'going_washroom' || m.microState === 'in_cubicle' || m.microState === 'wash_queue') {
+              activeTags.push({
+                pos: m.mesh.position,
+                text: m.microState === 'wash_queue' ? '🚻 Washroom Queue' : '🚻 Washroom',
+                cls: 'break'
+              });
+            } else if (idx === 0 && p.hasWrongOrder) {
+              activeTags.push({
+                pos: m.mesh.position,
+                text: '❌ Wrong Order! Sent Back',
+                cls: 'alert'
+              });
+            } else if (idx === 0 && p.isVip) {
+              activeTags.push({
+                pos: m.mesh.position,
+                text: `💎 ${p.name} (${p.state.replace('_', ' ')})`,
+                cls: 'vip'
+              });
+            }
+          });
+        });
+
+        // Render DOM Floating Tags
+        labelsLayer.innerHTML = '';
+        activeTags.slice(0, 18).forEach(tag => {
+          const v = tag.pos.clone();
+          v.y += 1.48;
+          v.project(activeCam);
+          if (v.z < 1) {
+            const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+            const el = document.createElement('div');
+            el.className = `floating-tag ${tag.cls}`;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.textContent = tag.text;
+            labelsLayer.appendChild(el);
+          }
+        });
+
+        // Camera Smooth Updates
+        if (observeMode) {
+          camState.targetTheta += dt * 0.16;
+        }
+        camState.theta += (camState.targetTheta - camState.theta) * 0.12;
+        updateCameraPosition();
+      }
+
+      function moveAndAnimateHuman(mesh, targetPos, step, isSitting) {
+        const rig = mesh.userData.rig;
+        const dist = mesh.position.distanceTo(targetPos);
+        if (dist > 0.12) {
+          const dir = targetPos.clone().sub(mesh.position).normalize();
+          mesh.position.addScaledVector(dir, Math.min(step, dist));
+          mesh.lookAt(targetPos.x, mesh.position.y, targetPos.z);
+          rig.walkPhase += step * 5.5;
+          const swing = Math.sin(rig.walkPhase) * 0.45;
+          rig.legL.rotation.x = swing;
+          rig.legR.rotation.x = -swing;
+          rig.armL.rotation.x = -swing * 0.7;
+          rig.armR.rotation.x = swing * 0.7;
+          rig.torso.position.y = 0.7;
+          rig.head.position.y = 1.08;
+        } else {
+          rig.legL.rotation.x = isSitting ? -Math.PI * 0.42 : 0;
+          rig.legR.rotation.x = isSitting ? -Math.PI * 0.42 : 0;
+          rig.armL.rotation.x = 0;
+          rig.armR.rotation.x = 0;
+          rig.torso.position.y = isSitting ? 0.54 : 0.7;
+          rig.head.position.y = isSitting ? 0.92 : 1.08;
+        }
+      }
+
+      function updateCameraPosition() {
+        const sinP = Math.sin(camState.phi);
+        const cosP = Math.cos(camState.phi);
+        const x = camState.target.x + camState.radius * sinP * Math.sin(camState.theta);
+        const y = camState.target.y + camState.radius * cosP;
+        const z = camState.target.z + camState.radius * sinP * Math.cos(camState.theta);
+
+        orthoCam.position.set(x, y, z);
+        orthoCam.lookAt(camState.target);
+        orthoCam.zoom = camState.orthoZoom;
+        orthoCam.updateProjectionMatrix();
+
+        perspCam.position.set(x, y, z);
+        perspCam.lookAt(camState.target);
+      }
+
+      // =========================================================================
+      // 7. MODE SWITCHING, LENSES & HUD DATA REFRESH
+      // =========================================================================
+      function setOperationalMode(modeNum) {
+        SIM.mode = modeNum;
+        document.querySelectorAll('.mode-btn').forEach(b => {
+          b.classList.toggle('active', Number(b.dataset.mode) === modeNum);
+        });
+
+        // Toggle Wait Lounge & Kiosk visibility
+        const showLounge = (modeNum === 2 || modeNum === 3);
+        if (sceneRefs.loungeGroup) sceneRefs.loungeGroup.visible = showLounge;
+
+        // Mode 3 activates Smart Communal Seat Packing & Impact Bar
+        if (modeNum === 3) {
+          SIM.smartPack = true;
+          document.getElementById('tog-smart-pack').checked = true;
+          document.getElementById('impact-comparison-bar').classList.add('visible');
+        } else {
+          document.getElementById('impact-comparison-bar').classList.remove('visible');
+        }
+
+        // Convert threshold waiting parties in Mode 2/3 into Lounge
+        if (showLounge) {
+          let count = 0;
+          SIM.parties.forEach(p => {
+            if (p.state === 'waiting_threshold' && count + p.size <= 16) {
+              p.state = 'waiting_lounge';
+              p.loungeOrdered = true;
+              count += p.size;
+            }
+          });
+        }
+        showToast(`Switched to Mode ${modeNum}: ${modeNum === 1 ? 'Current Scene (As-Is)' : modeNum === 2 ? 'Kiosk Fix (Proposed Idea)' : 'Manager Twin (Full Data + Impact)'}`);
+      }
+
+      function setMapLens(lensName) {
+        SIM.lens = lensName;
+        document.querySelectorAll('.lens-btn[data-lens]').forEach(b => {
+          b.classList.toggle('active', b.dataset.lens === lensName);
+        });
+
+        // Safety Lens: show 60 individual seat pads
+        sceneRefs.seatPads.forEach((pad, idx) => {
+          pad.visible = (lensName === 'safety');
+          const slot = sceneRefs.seatSlots[idx];
+          const closed = SIM.monsoon && slot.zoneType === 'patio';
+          pad.material.color.setHex(closed ? 0x64748b : (slot.occupantPartyId !== null ? 0xf43f5e : 0x10b981));
+        });
+
+        // Profit Zones Lens
+        sceneRefs.profitPrisms.forEach(p => {
+          p.visible = (lensName === 'profit');
+        });
+      }
+
+      function applySituationPreset(sitKey, silent) {
+        const cfg = SITUATIONS[sitKey];
+        if (!cfg) return;
+        SIM.situation = sitKey;
+        SIM.lambda = cfg.lambda;
+        SIM.pourBase = cfg.pourBase;
+        SIM.kitchenPrep = cfg.kitchenPrep;
+        SIM.staffCount = cfg.staff;
+        SIM.smokeRate = cfg.smokeRate;
+        SIM.washroomRate = cfg.washroomRate;
+        SIM.wrongRate = cfg.wrongRate;
+        SIM.patienceMult = cfg.patienceMult;
+        SIM.dwellMult = cfg.dwellMult;
+        SIM.monsoon = cfg.monsoon;
+        SIM.happyHour = cfg.happyHour;
+
+        if (sceneRefs.rainSystem) sceneRefs.rainSystem.visible = SIM.monsoon;
+        if (sceneRefs.projectorScreen) {
+          sceneRefs.projectorScreen.material.emissiveIntensity = cfg.cricket ? 0.75 : 0.2;
+        }
+        spawnStaffMembers();
+        syncControlsFromState();
+
+        document.querySelectorAll('#situation-grid .sit-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.sit === sitKey);
+        });
+        document.getElementById('situation-mini').textContent = cfg.label;
+        if (!silent) showToast(`Situation Applied: ${cfg.label} (λ=${cfg.lambda}/hr)`);
+      }
+
+      function syncControlsFromState() {
+        document.getElementById('slider-lambda').value = SIM.lambda;
+        document.getElementById('val-lambda').textContent = `${SIM.lambda} groups/hr`;
+
+        document.getElementById('slider-pour').value = SIM.pourBase;
+        document.getElementById('val-pour').textContent = `${SIM.pourBase}s / glass`;
+
+        document.getElementById('slider-kitchen').value = SIM.kitchenPrep;
+        document.getElementById('val-kitchen').textContent = `${SIM.kitchenPrep} min`;
+
+        document.getElementById('slider-staff').value = SIM.staffCount;
+        document.getElementById('val-staff').textContent = `${SIM.staffCount} staff`;
+
+        document.getElementById('slider-smoke').value = SIM.smokeRate;
+        document.getElementById('val-smoke').textContent = `${SIM.smokeRate}%`;
+
+        document.getElementById('slider-washroom').value = SIM.washroomRate;
+        document.getElementById('val-washroom').textContent = `${SIM.washroomRate}%`;
+
+        document.getElementById('slider-wrong').value = SIM.wrongRate;
+        document.getElementById('val-wrong').textContent = `${SIM.wrongRate}%`;
+
+        document.getElementById('tog-smart-pack').checked = SIM.smartPack;
+        document.getElementById('tog-monsoon').checked = SIM.monsoon;
+        document.getElementById('tog-game-cap').checked = SIM.gameCap;
+        document.getElementById('tog-lounge-timer').checked = SIM.loungeTimer;
+        document.getElementById('tog-happy-hour').checked = SIM.happyHour;
+        document.getElementById('tog-egress-clear').checked = SIM.egressClear;
+      }
+
+      function refreshHudPanels() {
+        // Clock & Top-Left HUD
+        const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+        const dName = days[(SIM.dayIndex + Math.floor(SIM.simMinutes / 1440)) % 7];
+        const hh = String(Math.floor((SIM.simMinutes % 1440) / 60)).padStart(2, '0');
+        const mm = String(Math.floor(SIM.simMinutes % 60)).padStart(2, '0');
+        document.getElementById('sim-clock').textContent = `${dName} ${hh}:${mm}`;
+
+        const occupiedSeats = sceneRefs.seatSlots.filter(s => s.occupantPartyId !== null).length;
+        const maxSeats = SIM.monsoon ? 44 : 60;
+        document.getElementById('seat-count-pill').textContent = `${occupiedSeats}/${maxSeats} Seats`;
+
+        document.getElementById('rating-val').textContent = `${Math.round(SIM.venueRating)}/999`;
+        document.getElementById('rating-bar').style.width = `${(SIM.venueRating / 999) * 100}%`;
+
+        // P&L Drawer
+        const totalRev = SIM.beerRev + SIM.foodRev + SIM.mugRev;
+        const beerCogs = (SIM.beerRev / 315) * 0.35 * 159.57;
+        const foodCogs = SIM.foodRev * 0.32;
+        const totalCogs = beerCogs + foodCogs + SIM.remakeWasteCost;
+        const grossProfit = totalRev - totalCogs;
+        const ebitda = grossProfit - 66500;
+        document.getElementById('pnl-total-rev').textContent = `₹${Math.round(totalRev).toLocaleString('en-IN')}`;
+        document.getElementById('pnl-ebitda').textContent = `₹${Math.round(ebitda).toLocaleString('en-IN')}`;
+        document.getElementById('pnl-margin').textContent = `Gross Margin: ${((grossProfit / Math.max(1, totalRev)) * 100).toFixed(1)}%`;
+        document.getElementById('pnl-lounge-rev').textContent = `₹${Math.round(SIM.loungeRev).toLocaleString('en-IN')}`;
+        document.getElementById('pnl-remake-waste').textContent = `₹${Math.round(SIM.remakeWasteCost).toLocaleString('en-IN')}`;
+        document.getElementById('pnl-remake-count').textContent = `${SIM.remakeCount} remakes (₹125 food / ₹80 beer)`;
+
+        // Kegs Drawer
+        const totalKegs = SIM.backupKegs + 8;
+        document.getElementById('keg-total-stock').textContent = `${totalKegs} Kegs (${totalKegs * 30}L)`;
+        document.getElementById('fries-stock-val').textContent = `${SIM.friesStock} Portions`;
+
+        const kegList = document.getElementById('keg-list');
+        if (kegList) {
+          kegList.innerHTML = TAPS.map(t => {
+            const pct = Math.round((t.liters / t.maxL) * 100);
+            const barCol = pct < 25 ? '#f43f5e' : pct < 50 ? '#f59e0b' : '#10b981';
+            return `
+              <div class="keg-row">
+                <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;">
+                  <span>Tap ${t.id}: ${t.name} <span style="color:#94a3b8;font-weight:500;">(${t.style})</span></span>
+                  <span class="mono" style="color:${barCol};">${t.liters.toFixed(1)}L (${pct}%) ${t.swapTimer > 0 ? '🔄 SWAP' : ''}</span>
+                </div>
+                <div class="keg-bar-bg"><div class="keg-bar-fill" style="width:${pct}%;background:${barCol};"></div></div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        const topSorted = [...TAPS].sort((a, b) => b.sold - a.sold).slice(0, 4);
+        document.getElementById('top-sellers-list').innerHTML =
+          topSorted.map((t, idx) => `<div>${idx + 1}. <strong>${t.name}</strong> — ${t.sold} pours sold (${t.highCarb ? '17s 2-stage' : '16s standard'})</div>`).join('') +
+          `<div style="margin-top:4px;border-top:1px solid rgba(148,163,184,0.2);padding-top:4px;">🍟 <strong>House Fries (₹350)</strong> &amp; <strong>Chicken Ghee Roast</strong> lead Khar food attach (0.72 dishes/pour).</div>`;
+
+        // Traffic & Micro-Flow Drawer
+        const loungePax = SIM.parties.filter(p => p.state === 'waiting_lounge').reduce((a, b) => a + b.size, 0);
+        const streetPax = SIM.parties.filter(p => p.state === 'waiting_threshold').reduce((a, b) => a + b.size, 0);
+        let outsideSmoke = 0;
+        let inWashroom = 0;
+        let washQueue = 0;
+        SIM.parties.forEach(p => p.members.forEach(m => {
+          if (m.microState === 'going_smoke' || m.microState === 'at_smoke') outsideSmoke++;
+          if (m.microState === 'in_cubicle') inWashroom++;
+          if (m.microState === 'wash_queue') washQueue++;
+        }));
+
+        document.getElementById('traf-seated').textContent = `${occupiedSeats} / ${maxSeats}`;
+        document.getElementById('traf-queue').textContent = `${loungePax} Lounge / ${streetPax} Threshold`;
+        document.getElementById('traf-smoke-count').textContent = `${outsideSmoke} outside now`;
+        document.getElementById('traf-smoke-total').textContent = `${SIM.smokeTotalTrips} total step-outs (seats held)`;
+        document.getElementById('traf-wash-count').textContent = `${inWashroom} / 2 cubicles`;
+        document.getElementById('traf-wash-total').textContent = `${SIM.washroomTotalTrips} trips • ${washQueue} in lobby queue`;
+        document.getElementById('traf-wrong-count').textContent = `${SIM.remakeCount} remakes`;
+        document.getElementById('traf-wrong-rate').textContent = `${SIM.wrongRate}% base • +10m remake dwell`;
+
+        // SMS Party Dropdown
+        const smsSel = document.getElementById('sms-party-select');
+        const waitingParties = SIM.parties.filter(p => p.state === 'waiting_lounge' || p.state === 'waiting_threshold' || p.hasWrongOrder);
+        if (smsSel && waitingParties.length > 0) {
+          const prevVal = smsSel.value;
+          smsSel.innerHTML = waitingParties.map(p => `<option value="${p.id}">${p.name} (${p.size} pax • ${p.state})</option>`).join('');
+          if (prevVal) smsSel.value = prevVal;
+        }
+      }
+
+      // =========================================================================
+      // 8. INTERACTIVE EVENT LISTENERS & RAYCAST INSPECTOR
+      // =========================================================================
+      function bindUIEvents() {
+        // 3 Core Operational Modes
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+          btn.addEventListener('click', () => setOperationalMode(Number(btn.dataset.mode)));
+        });
+
+        // Drawers Open / Close
+        document.querySelectorAll('[data-drawer]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const targetId = btn.dataset.drawer;
+            const drawer = document.getElementById(targetId);
+            const wasOpen = drawer.classList.contains('open');
+            document.querySelectorAll('.drawer-panel').forEach(d => d.classList.remove('open'));
+            document.querySelectorAll('[data-drawer]').forEach(b => b.classList.remove('active'));
+            if (!wasOpen) {
+              drawer.classList.add('open');
+              btn.classList.add('active');
+            }
+          });
+        });
+
+        document.querySelectorAll('[data-close]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            btn.closest('.drawer-panel').classList.remove('open');
+            document.querySelectorAll('[data-drawer]').forEach(b => b.classList.remove('active'));
+          });
+        });
+
+        // Play/Pause & Speeds
+        const playBtn = document.getElementById('btn-play-pause');
+        playBtn.addEventListener('click', () => {
+          SIM.paused = !SIM.paused;
+          playBtn.textContent = SIM.paused ? '▶' : '⏸';
+          playBtn.classList.toggle('active', !SIM.paused);
+        });
+
+        document.querySelectorAll('.speed-btn[data-speed]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            SIM.speed = Number(btn.dataset.speed);
+            document.querySelectorAll('.speed-btn[data-speed]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+          });
+        });
+
+        // Camera Controls
+        const camModeBtn = document.getElementById('btn-cam-mode');
+        camModeBtn.addEventListener('click', () => {
+          isOrtho = !isOrtho;
+          activeCam = isOrtho ? orthoCam : perspCam;
+          camModeBtn.textContent = isOrtho ? '📐 ISO View' : '🎥 3D Free-Orbit';
+        });
+
+        document.getElementById('btn-cam-rot').addEventListener('click', () => {
+          camState.targetTheta += Math.PI * 0.5;
+        });
+
+        const obsBtn = document.getElementById('btn-cam-observe');
+        obsBtn.addEventListener('click', () => {
+          observeMode = !observeMode;
+          obsBtn.classList.toggle('active', observeMode);
+        });
+
+        document.getElementById('btn-cam-reset').addEventListener('click', () => {
+          observeMode = false;
+          obsBtn.classList.remove('active');
+          camState.target.set(0, 0.5, 0.5);
+          camState.targetTheta = Math.PI * 0.25;
+          camState.phi = 0.88;
+          camState.radius = 34;
+          camState.orthoZoom = 1.0;
+        });
+
+        // Map Lenses
+        document.querySelectorAll('.lens-btn[data-lens]').forEach(btn => {
+          btn.addEventListener('click', () => setMapLens(btn.dataset.lens));
+        });
+
+        // God Mode Toggle
+        document.getElementById('toggle-god-mode').addEventListener('change', e => {
+          SIM.godMode = e.target.checked;
+          document.getElementById('god-mode-pill').classList.toggle('visible', SIM.godMode);
+          document.getElementById('btn-sim-env').classList.toggle('god-active', SIM.godMode);
+          if (SIM.godMode) {
+            addGodLog('⚡ GOD MODE ENGAGED — Autonomous probability & real-life chaos engine running.');
+            showToast('⚡ GOD MODE ACTIVE: Real-life situations & chaos running autonomously!');
+          } else {
+            addGodLog('God Mode paused — Manual slider & toggle control restored.');
+          }
+        });
+
+        // Situation Buttons
+        document.querySelectorAll('#situation-grid .sit-btn').forEach(btn => {
+          btn.addEventListener('click', () => applySituationPreset(btn.dataset.sit, false));
+        });
+
+        // 7 Sliders
+        const bindSlider = (id, key, suffix, fmt) => {
+          document.getElementById(id).addEventListener('input', e => {
+            SIM[key] = Number(e.target.value);
+            document.getElementById(suffix).textContent = fmt(SIM[key]);
+            if (key === 'staffCount') spawnStaffMembers();
+          });
+        };
+        bindSlider('slider-lambda', 'lambda', 'val-lambda', v => `${v} groups/hr`);
+        bindSlider('slider-pour', 'pourBase', 'val-pour', v => `${v}s / glass`);
+        bindSlider('slider-kitchen', 'kitchenPrep', 'val-kitchen', v => `${v} min`);
+        bindSlider('slider-staff', 'staffCount', 'val-staff', v => `${v} staff`);
+        bindSlider('slider-smoke', 'smokeRate', 'val-smoke', v => `${v}%`);
+        bindSlider('slider-washroom', 'washroomRate', 'val-washroom', v => `${v}%`);
+        bindSlider('slider-wrong', 'wrongRate', 'val-wrong', v => `${v}%`);
+
+        // 6 On/Off Toggles
+        document.getElementById('tog-smart-pack').addEventListener('change', e => { SIM.smartPack = e.target.checked; });
+        document.getElementById('tog-monsoon').addEventListener('change', e => {
+          SIM.monsoon = e.target.checked;
+          if (sceneRefs.rainSystem) sceneRefs.rainSystem.visible = SIM.monsoon;
+          showToast(SIM.monsoon ? '🌧️ Monsoon Downpour: 16 Outdoor Patio seats closed!' : '☀️ Patio Reopened: All 60 seats active');
+        });
+        document.getElementById('tog-game-cap').addEventListener('change', e => { SIM.gameCap = e.target.checked; });
+        document.getElementById('tog-lounge-timer').addEventListener('change', e => { SIM.loungeTimer = e.target.checked; });
+        document.getElementById('tog-happy-hour').addEventListener('change', e => { SIM.happyHour = e.target.checked; });
+        document.getElementById('tog-egress-clear').addEventListener('change', e => { SIM.egressClear = e.target.checked; });
+
+        // Instant Event Injectors
+        document.getElementById('btn-inj-wrong').addEventListener('click', () => {
+          const seated = SIM.parties.filter(p => p.state === 'seated');
+          if (seated.length) {
+            triggerWrongOrderOnParty(seated[Math.floor(Math.random() * seated.length)]);
+            showToast('❌ Wrong Order injected! Server returning dish to Kitchen Pass.');
+          }
+        });
+        document.getElementById('btn-inj-smoke').addEventListener('click', () => {
+          const seated = SIM.parties.filter(p => p.state === 'seated');
+          seated.slice(0, 2).forEach(p => triggerSmokeOrCallBreak(p));
+          showToast('🚬📞 Guests stepped out to Road No. 3 curb (seats held reserved).');
+        });
+        document.getElementById('btn-inj-washroom').addEventListener('click', () => {
+          const seated = SIM.parties.filter(p => p.state === 'seated');
+          seated.slice(0, 3).forEach(p => triggerWashroomTrip(p));
+          showToast('🚻 3 guests heading to Top-Left Pink Washrooms (2 cubicles).');
+        });
+        document.getElementById('btn-blow-kegs').addEventListener('click', () => {
+          TAPS[0].liters = 0.2;
+          TAPS[1].liters = 0.3;
+          showToast('💥 Top 2 Kegs (Alphonso Mead & Apple Cider) blown! Coupler swap triggered.');
+        });
+        document.getElementById('btn-fries-out').addEventListener('click', () => {
+          SIM.friesStock = 0;
+          showToast('🍟 House Fries Stockout! Batch fryer reload started (8 mins).');
+        });
+        document.getElementById('btn-bmc-inspect').addEventListener('click', () => {
+          const spill = Math.max(0, SIM.parties.filter(p => p.state === 'waiting_threshold').reduce((a, b) => a + b.size, 0) - 8);
+          showToast(spill > 4 ? `🚨 BMC/Excise Audit: VIOLATION! ${spill} guests encroaching on 1.50m footpath.` : '✅ BMC/Excise Audit Passed: 1.50m footpath & 1.0m fire path clear!');
+        });
+
+        // 100-Replication Monte Carlo Runner
+        document.getElementById('btn-run-mc').addEventListener('click', () => {
+          const m1Wait = Math.round(28 + SIM.lambda * 0.26 + SIM.wrongRate * 0.4);
+          const m2Wait = Math.round(14 + SIM.lambda * 0.12);
+          const m3Wait = Math.round(9 + SIM.lambda * 0.08);
+          const m3Rev = Math.round(395000 + SIM.lambda * 1150 - SIM.remakeWasteCost);
+          document.getElementById('mc-results').innerHTML = `
+            <div style="color:#34d399;font-weight:700;margin-bottom:4px;">✅ Completed 100 Replications (Fri–Sat Peak Shift):</div>
+            <div>• <strong>Mode 1 (As-Is):</strong> Avg Wait <span class="mono">${m1Wait}m</span> • Walk-Away <span class="mono">26.8%</span> • Shift Rev <span class="mono">₹3,42,100</span></div>
+            <div>• <strong>Mode 2 (Kiosk Fix):</strong> Avg Wait <span class="mono">${m2Wait}m</span> • Walk-Away <span class="mono">9.4%</span> • Lounge Rev <span class="mono">+₹68,400</span></div>
+            <div>• <strong>Mode 3 (Manager Twin):</strong> Avg Wait <span class="mono">${m3Wait}m</span> • Walk-Away <span class="mono">5.9%</span> • Net Rev <span class="mono">₹${m3Rev.toLocaleString('en-IN')}</span></div>
+          `;
+        });
+
+        // SMS Maker Templates & Dispatch
+        let currentSmsTpl = 'token';
+        document.querySelectorAll('[data-tpl]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            currentSmsTpl = btn.dataset.tpl;
+            document.querySelectorAll('[data-tpl]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const map = {
+              token: '🍺 Welcome to Doolally Khar West! Token #W-108 is active in our FL-III Wait Lounge. Order a 180ml Alphonso Mead taster (₹200) or House Fries (₹350) at the Express Kiosk while we prep your table!',
+              ready: '🪑 Good news! Your communal table at Doolally Khar is READY. Please head up the yellow 3-step threshold within 5 mins (your Wait Lounge tab transfers automatically).',
+              remake: '🔥 Apologies for the mix-up! Your fresh hot remake is priority-fired at our Kitchen Pass and will reach your table in 4 mins—complimentary 180ml taster on us!',
+              mug: '🍺 Mug Club VIP Fast-Track! Your 500ml Super Pour (₹330) is queued with 4s QR checkout. Cheers!'
+            };
+            document.getElementById('sms-preview-text').textContent = map[currentSmsTpl];
+          });
+        });
+
+        document.getElementById('btn-send-sms').addEventListener('click', () => {
+          const pid = Number(document.getElementById('sms-party-select').value);
+          const party = SIM.parties.find(p => p.id === pid);
+          if (party) {
+            if (currentSmsTpl === 'ready') {
+              assignSeatsToParty(party);
+            } else if (currentSmsTpl === 'remake') {
+              party.hasWrongOrder = false;
+              SIM.venueRating = Math.min(999, SIM.venueRating + 5);
+            }
+            showToast(`📲 WhatsApp Alert dispatched to ${party.name}!`);
+          } else {
+            showToast('📲 Broadcast WhatsApp Waitlist Alert sent!');
+          }
+        });
+
+        // VIP Guest Pass Spawner
+        document.getElementById('btn-spawn-vip').addEventListener('click', () => {
+          const name = document.getElementById('vip-name').value.trim() || "VIP Crew";
+          const size = Number(document.getElementById('vip-size').value);
+          const isMug = document.getElementById('vip-mug').checked;
+          const p = createPartyEntity(size, isMug, name, true);
+          if (!assignSeatsToParty(p)) {
+            p.state = SIM.mode >= 2 ? 'waiting_lounge' : 'waiting_threshold';
+          }
+          document.getElementById('vip-status-box').innerHTML = `💎 <strong>${name}</strong> (${size} pax, ${isMug ? 'Mug Club 500ml' : '330ml Pint'}) spawned with emerald Sims Plumbob!`;
+          showToast(`💎 Spawned VIP Party "${name}" with Sims Plumbob!`);
+        });
+
+        // Inspector Close
+        document.getElementById('btn-close-inspector').addEventListener('click', () => {
+          document.getElementById('inspector-card').classList.remove('visible');
+        });
+      }
+
+      function setupViewportControls() {
+        const vp = document.getElementById('viewport');
+        let dragging = false;
+        let panMode = false;
+        let prevX = 0, prevY = 0;
+        let downX = 0, downY = 0;
+
+        vp.addEventListener('contextmenu', e => e.preventDefault());
+
+        vp.addEventListener('pointerdown', e => {
+          dragging = true;
+          panMode = (e.button === 2 || e.shiftKey);
+          prevX = downX = e.clientX;
+          prevY = downY = e.clientY;
+        });
+
+        window.addEventListener('pointermove', e => {
+          if (!dragging) return;
+          const dx = e.clientX - prevX;
+          const dy = e.clientY - prevY;
+          prevX = e.clientX;
+          prevY = e.clientY;
+
+          if (panMode) {
+            const panScale = 0.035 / camState.orthoZoom;
+            const forward = new THREE.Vector3(-Math.sin(camState.theta), 0, -Math.cos(camState.theta));
+            const right = new THREE.Vector3(Math.cos(camState.theta), 0, -Math.sin(camState.theta));
+            camState.target.addScaledVector(right, -dx * panScale);
+            camState.target.addScaledVector(forward, dy * panScale);
+          } else {
+            observeMode = false;
+            document.getElementById('btn-cam-observe').classList.remove('active');
+            camState.targetTheta -= dx * 0.007;
+            camState.phi = Math.max(0.28, Math.min(1.38, camState.phi - dy * 0.006));
+          }
+        });
+
+        window.addEventListener('pointerup', e => {
+          if (dragging && Math.hypot(e.clientX - downX, e.clientY - downY) < 5) {
+            handleRaycastClick(e.clientX, e.clientY);
+          }
+          dragging = false;
+        });
+
+        vp.addEventListener('wheel', e => {
+          e.preventDefault();
+          if (isOrtho) {
+            camState.orthoZoom = Math.max(0.45, Math.min(2.6, camState.orthoZoom * (e.deltaY > 0 ? 0.92 : 1.08)));
+          } else {
+            camState.radius = Math.max(12, Math.min(62, camState.radius + e.deltaY * 0.02));
+          }
+        }, { passive: false });
+      }
+
+      function handleRaycastClick(clientX, clientY) {
+        if (!renderer || !activeCam) return;
+        const mouse = new THREE.Vector2(
+          (clientX / window.innerWidth) * 2 - 1,
+          -(clientY / window.innerHeight) * 2 + 1
+        );
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, activeCam);
+        const hits = raycaster.intersectObjects(scene.children, true);
+        for (let i = 0; i < hits.length; i++) {
+          let obj = hits[i].object;
+          while (obj) {
+            if (obj.userData && obj.userData.inspectType) {
+              openInspector(obj.userData);
+              return;
+            }
+            obj = obj.parent;
+          }
+        }
+      }
+
+      function openInspector(data) {
+        const card = document.getElementById('inspector-card');
+        const titleEl = document.getElementById('insp-title');
+        const bodyEl = document.getElementById('insp-body');
+        const actEl = document.getElementById('insp-actions');
+        actEl.innerHTML = '';
+
+        if (data.inspectType === 'party') {
+          const p = SIM.parties.find(x => x.id === data.partyId);
+          if (!p) return;
+          titleEl.textContent = `${p.name} (${p.size} Pax • ${p.archetype})`;
+          bodyEl.innerHTML = `
+            <div>Status: <strong>${p.state.toUpperCase()}</strong> • Mug Club: <strong>${p.isMugClub ? 'Yes (500ml)' : 'Standard 330ml'}</strong></div>
+            <div>Wait: <span class="mono">${Math.round(p.waitElapsed)}m</span> • Dwell: <span class="mono">${Math.round(p.dwellElapsed)}/${Math.round(p.dwellTarget)}m</span></div>
+            <div>Wrong Orders: <span class="mono">${p.remakeCount}</span> ${p.hasWrongOrder ? '<strong style="color:#fda4af;">(Remake in progress!)</strong>' : ''}</div>
+          `;
+          const b1 = document.createElement('button');
+          b1.className = 'hud-btn';
+          b1.textContent = '🚬 Smoke/Call Break';
+          b1.onclick = () => triggerSmokeOrCallBreak(p);
+
+          const b2 = document.createElement('button');
+          b2.className = 'hud-btn';
+          b2.textContent = '🚻 Washroom Trip';
+          b2.onclick = () => triggerWashroomTrip(p);
+
+          const b3 = document.createElement('button');
+          b3.className = 'hud-btn';
+          b3.textContent = '❌ Trigger Wrong Order';
+          b3.onclick = () => triggerWrongOrderOnParty(p);
+
+          actEl.append(b1, b2, b3);
+        } else {
+          titleEl.textContent = data.title;
+          bodyEl.textContent = data.desc;
+        }
+        card.classList.add('visible');
+      }
+
+      // =========================================================================
+      // 9. WINDOW LOAD INITIALIZATION & RESIZE OBSERVER
+      // =========================================================================
+      window.addEventListener('load', () => {
+        try {
+          if (typeof THREE === 'undefined') {
+            throw new Error('Three.js r128 failed to load from CDN.');
+          }
+          const vp = document.getElementById('viewport');
+          const w = vp.clientWidth || window.innerWidth;
+          const h = vp.clientHeight || window.innerHeight;
+
+          renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+          renderer.setSize(w, h);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+          renderer.shadowMap.enabled = true;
+          renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+          vp.appendChild(renderer.domElement);
+
+          const aspect = w / h;
+          const frustum = 14.5;
+          orthoCam = new THREE.OrthographicCamera(
+            -frustum * aspect, frustum * aspect,
+            frustum, -frustum,
+            -200, 500
+          );
+          perspCam = new THREE.PerspectiveCamera(42, aspect, 0.5, 300);
+          activeCam = orthoCam;
+
+          buildArchitecturalScene();
+          bindUIEvents();
+          setupViewportControls();
+          setOperationalMode(1);
+          updateCameraPosition();
+
+          // Immediate Frame-1 Render
+          renderer.render(scene, activeCam);
+
+          // ResizeObserver for Adaptive Viewport
+          const ro = new ResizeObserver(() => {
+            const nw = vp.clientWidth || window.innerWidth;
+            const nh = vp.clientHeight || window.innerHeight;
+            if (nw <= 0 || nh <= 0) return;
+            const nasp = nw / nh;
+            orthoCam.left = -frustum * nasp;
+            orthoCam.right = frustum * nasp;
+            orthoCam.top = frustum;
+            orthoCam.bottom = -frustum;
+            orthoCam.updateProjectionMatrix();
+
+            perspCam.aspect = nasp;
+            perspCam.updateProjectionMatrix();
+            renderer.setSize(nw, nh);
+          });
+          ro.observe(vp);
+
+          let lastTime = performance.now();
+          let hudTimer = 0;
+
+          function animateLoop(now) {
+            requestAnimationFrame(animateLoop);
+            const dt = Math.min(0.05, (now - lastTime) / 1000);
+            lastTime = now;
+
+            stepSimulation(dt);
+            animateAgentsAndScene(dt);
+
+            hudTimer += dt;
+            if (hudTimer >= 0.35) {
+              hudTimer = 0;
+              refreshHudPanels();
+            }
+
+            renderer.render(scene, activeCam);
+          }
+          requestAnimationFrame(animateLoop);
+        } catch (err) {
+          const errBox = document.getElementById('error-overlay');
+          errBox.style.display = 'flex';
+          errBox.innerHTML = `<div><h2 style="color:#f43f5e;margin-bottom:8px;">3D WebGL Initialization Diagnostic</h2><p>${err.message}</p></div>`;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

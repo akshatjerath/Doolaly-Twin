@@ -1,0 +1,111 @@
+{
+  "phase": "verdict",
+  "complete": false,
+  "idea": "Doolally Khar digital twin \u00e2\u20ac\u201d Phase 1 plan (layout facts vs gaps, module structure, parameter registry)",
+  "themeName": "Council",
+  "sessionId": "doolally-khar-twin-phase1-plan-20261114-1454",
+  "date": "2026-11-14",
+  "mode": "standard",
+  "profile": "balanced",
+  "backend": "sequential",
+  "roster": [
+    {
+      "name": "Architect",
+      "color": "#60a5fa",
+      "score": 9,
+      "rationale": "Module boundaries, sim-worker to renderer contract",
+      "skills": [
+        "codebase-context",
+        "api-design"
+      ],
+      "status": "active"
+    },
+    {
+      "name": "Alchemist",
+      "color": "#818cf8",
+      "score": 9,
+      "rationale": "Queue simulation, censoring, CIs, calibration",
+      "skills": [
+        "schema-evaluation"
+      ],
+      "status": "active"
+    },
+    {
+      "name": "Artisan",
+      "color": "#fb7185",
+      "score": 8,
+      "rationale": "Studio-grade 3D scene from two photos",
+      "skills": [
+        "design-system-architecture",
+        "motion-design"
+      ],
+      "status": "active"
+    },
+    {
+      "name": "Skeptic",
+      "color": "#f87171",
+      "score": 7,
+      "rationale": "Evidence tags, invented-fact risk, licence gating",
+      "skills": [
+        "failure-mode-analysis",
+        "edge-case-enumeration"
+      ],
+      "status": "active"
+    },
+    {
+      "name": "Craftsman",
+      "color": "#c084fc",
+      "score": 6,
+      "rationale": "Tests, enforcing no hardcoded KPIs",
+      "skills": [
+        "testing-strategy"
+      ],
+      "status": "active"
+    },
+    {
+      "name": "Tuner",
+      "color": "#fbbf24",
+      "score": 6,
+      "rationale": "Frame and draw-call budgets",
+      "skills": [
+        "performance-audit"
+      ],
+      "status": "active"
+    },
+    {
+      "name": "Advocate",
+      "color": "#4ade80",
+      "score": 6,
+      "rationale": "HUD, accessibility",
+      "skills": [
+        "interaction-design",
+        "a11y-audit"
+      ],
+      "status": "active"
+    }
+  ],
+  "tensionPairs": [
+    {
+      "a": "Architect",
+      "b": "Tuner",
+      "tension": "One worker with the animated run as replication 0, or two workers (live run + replication batch)"
+    },
+    {
+      "a": "Artisan",
+      "b": "Skeptic",
+      "tension": "Studio-grade scene with a fully modelled ASSUMED bar vs a polished render lending false authority to an unscaled sketch"
+    },
+    {
+      "a": "Alchemist",
+      "b": "Skeptic",
+      "tension": "Revenue inputs sourced from 2020/other-outlet prices and a disputed cost-for-two proxy vs revenue tagged ASSUMED or withheld"
+    }
+  ],
+  "costEstimate": "~170-250K tokens",
+  "phases": [
+    "interview",
+    "assembly",
+    "deliberation",
+    "verdict"
+  ]
+}

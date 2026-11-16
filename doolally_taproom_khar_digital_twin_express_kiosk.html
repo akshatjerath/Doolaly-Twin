@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doolally Taproom Khar — Spatial Digital Twin &amp; Express Kiosk</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Fraunces', 'serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            espresso: {
+              950: '#120f0c',
+              900: '#181411',
+              850: '#1f1915',
+              800: '#27201b',
+              700: '#362c25',
+              600: '#4a3c32',
+            },
+            ambercraft: {
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+            },
+            cream: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              200: '#fde68a',
+              300: '#fcd34d',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      background-color: #181411;
+      color: #fef3c7;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #181411;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #4a3c32;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #d97706;
+    }
+    /* Custom range slider styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      background: #362c25;
+      height: 6px;
+      border-radius: 999px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      margin-top: -5px;
+      background-color: #f59e0b;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      border: 2px solid #181411;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.55; }
+      50% { opacity: 0.9; }
+    }
+    .animate-pulse-slow {
+      animation: pulseGlow 2.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    .svg-zone {
+      cursor: pointer;
+      transition: filter 0.2s ease, opacity 0.2s ease;
+    }
+    .svg-zone:hover {
+      filter: brightness(1.14);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-amber-500 selection:text-espresso-950">
+
+  <!-- Toast Notification Banner (Replaces alert) -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 1: TOP NAVIGATION & SCENARIO SIMULATION CONTROL BAR           -->
+  <!-- ===================================================================== -->
+  <header class="bg-espresso-900/95 border-b border-espresso-700 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-[1600px] mx-auto px-4 py-3 flex flex-col gap-3">
+      
+      <!-- Top Row: Brand Identity, Clock, Scenario Switcher & Evidence Button -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-espresso-950 font-display font-bold text-xl shadow-lg shadow-amber-900/30">
+            D
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="font-display font-bold text-lg sm:text-xl text-cream-100 tracking-tight">
+                Doolally Taproom <span class="text-amber-400">Khar West</span>
+              </h1>
+              <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-espresso-800 text-amber-300 border border-espresso-600">
+                6F ROOFTOP • DIGITAL TWIN
+              </span>
+            </div>
+            <p class="text-xs text-cream-200/70">
+              FL-III Licensed Wait-Lounge Express Kiosk &amp; Discrete-Event Crowd Simulator
+            </p>
+          </div>
+        </div>
+
+        <!-- Scenario Switcher Pills -->
+        <div class="flex flex-wrap items-center gap-1.5 bg-espresso-950 p-1.5 rounded-xl border border-espresso-700" role="tablist" aria-label="Transformation Scenarios">
+          <button onclick="setScenario(1)" id="btn-scen-1" class="scen-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+            Scenario 1: Baseline (Manual Queue)
+          </button>
+          <button onclick="setScenario(2)" id="btn-scen-2" class="scen-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+            Scenario 2: Express Kiosk + Waitlist
+          </button>
+          <button onclick="setScenario(3)" id="btn-scen-3" class="scen-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+            Scenario 3: Full Digital Twin + Smart Seating
+          </button>
+        </div>
+
+        <!-- Sim Clock & Evidence Modal Button -->
+        <div class="flex items-center gap-2.5">
+          <div class="bg-espresso-850 border border-espresso-700 px-3 py-1.5 rounded-xl flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span class="font-mono text-xs text-cream-200/70">SAT PEAK:</span>
+            <span id="sim-clock" class="font-mono text-sm font-bold text-amber-400">19:30</span>
+          </div>
+          <button onclick="toggleEvidenceModal(true)" class="px-3 py-2 rounded-xl bg-espresso-800 hover:bg-espresso-700 border border-amber-500/40 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>Assumptions &amp; Evidence Log</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Second Row: Live Simulation Parameters & Time Controls -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-espresso-800 items-center">
+        
+        <!-- Arrival Rate Slider -->
+        <div class="md:col-span-3 bg-espresso-850/90 px-3 py-2 rounded-xl border border-espresso-700/80">
+          <div class="flex justify-between items-center text-xs mb-1">
+            <span class="text-cream-200/80 font-medium">Arrival Rate (λ)</span>
+            <span id="val-arrival" class="font-mono font-bold text-amber-400">32 parties/hr</span>
+          </div>
+          <input type="range" id="slider-arrival" min="10" max="45" value="32" class="w-full" oninput="updateSimParams()" />
+        </div>
+
+        <!-- Table Turn Time Slider -->
+        <div class="md:col-span-3 bg-espresso-850/90 px-3 py-2 rounded-xl border border-espresso-700/80">
+          <div class="flex justify-between items-center text-xs mb-1">
+            <span class="text-cream-200/80 font-medium">Avg Table Turn Time</span>
+            <span id="val-turn" class="font-mono font-bold text-amber-400">75 mins</span>
+          </div>
+          <input type="range" id="slider-turn" min="45" max="110" step="5" value="75" class="w-full" oninput="updateSimParams()" />
+        </div>
+
+        <!-- Match Screening Night Toggle -->
+        <div class="md:col-span-3 bg-espresso-850/90 px-3 py-2 rounded-xl border border-espresso-700/80 flex items-center justify-between">
+          <div>
+            <div class="text-xs font-medium text-cream-100">Match Screening Night</div>
+            <div class="text-[10px] text-cream-200/60">+18m dwell • Projector active</div>
+          </div>
+          <button id="toggle-match" onclick="toggleMatchNight()" role="switch" aria-checked="false" class="w-11 h-6 rounded-full bg-espresso-700 p-0.5 transition-colors relative focus:outline-none">
+            <span id="toggle-match-dot" class="block w-5 h-5 rounded-full bg-cream-200 transform transition-transform"></span>
+          </button>
+        </div>
+
+        <!-- Time Controls -->
+        <div class="md:col-span-3 flex items-center justify-end gap-2">
+          <button onclick="fastForward15()" class="flex-1 sm:flex-none px-3.5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-espresso-950 font-bold text-xs shadow-md shadow-amber-950/50 transition-all flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+            <span>Fast-Forward +15m</span>
+          </button>
+          <button onclick="resetSimulation()" class="px-3 py-2.5 rounded-xl bg-espresso-800 hover:bg-espresso-700 border border-espresso-600 text-cream-200 text-xs font-semibold transition-colors" title="Reset Simulation">
+            Reset
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN WORKSPACE CONTAINER                                              -->
+  <!-- ===================================================================== -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 py-5 flex flex-col gap-6">
+
+    <!-- =================================================================== -->
+    <!-- SECTION 2: INTERACTIVE 2D TOP-DOWN SPATIAL DIGITAL TWIN (KHAR)      -->
+    <!-- =================================================================== -->
+    <section class="bg-espresso-900 border border-espresso-700 rounded-2xl p-4 sm:p-5 shadow-xl">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-mono text-[11px] font-bold border border-amber-500/30">
+              SPATIAL DIGITAL TWIN
+            </span>
+            <h2 class="font-display font-bold text-lg text-cream-100">
+              Doolally Khar 6th-Floor Rooftop Layout — Live Crowd &amp; Seat Telemetry
+            </h2>
+          </div>
+          <p class="text-xs text-cream-200/70 mt-0.5">
+            Based on video walkthroughs: Left enclosed kitchen/bar corridor, central walkway, 6 long communal tables under sloped white canopy, far-wall projector, and proposed FL-III Wait Lounge by the stairs. <strong>Click any zone or table to inspect.</strong>
+          </p>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap items-center gap-3 text-[11px] bg-espresso-950/90 px-3 py-2 rounded-xl border border-espresso-800">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-amber-600 inline-block"></span>Occupied Seat</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block"></span>Open Seat (Packable in S3)</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>Waiting Party Token</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm border border-dashed border-rose-400 inline-block"></span>FL-III Licensed Boundary</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        <!-- SVG Floor Plan Canvas (8 cols on lg) -->
+        <div class="lg:col-span-8 bg-espresso-950 rounded-xl border border-espresso-700 p-2 sm:p-3 overflow-x-auto flex items-center justify-center relative">
+          <svg id="khar-floorplan" viewBox="0 0 920 540" class="w-full h-auto min-w-[680px] select-none rounded-lg" role="img" aria-label="Top-down architectural digital twin of Doolally Taproom Khar">
+            <defs>
+              <!-- Wood texture pattern -->
+              <pattern id="woodPlank" width="40" height="12" patternUnits="userSpaceOnUse">
+                <rect width="40" height="12" fill="#5c3a21"/>
+                <line x1="0" y1="0" x2="40" y2="0" stroke="#3e2614" stroke-width="1"/>
+                <line x1="20" y1="0" x2="20" y2="12" stroke="#4a2e19" stroke-width="0.6"/>
+              </pattern>
+              <!-- Canopy roof truss dashed grid -->
+              <pattern id="canopyGrid" width="115" height="135" patternUnits="userSpaceOnUse">
+                <path d="M 115 0 L 0 0 0 135" fill="none" stroke="#fef3c7" stroke-opacity="0.06" stroke-width="1" stroke-dasharray="6,6"/>
+              </pattern>
+              <!-- Congestion Heatmap Gradients -->
+              <radialGradient id="heatHigh" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ef4444" stop-opacity="0.58"/>
+                <stop offset="60%" stop-color="#f97316" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
+              </radialGradient>
+              <radialGradient id="heatMed" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.42"/>
+                <stop offset="65%" stop-color="#d97706" stop-opacity="0.15"/>
+                <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+              </radialGradient>
+              <radialGradient id="heatLow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#10b981" stop-opacity="0.28"/>
+                <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+              </radialGradient>
+              <!-- Projector Glow -->
+              <linearGradient id="projectorBeam" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45"/>
+                <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Base Floor Slab (6th Floor Rooftop Terrace) -->
+            <rect x="12" y="12" width="896" height="516" rx="14" fill="#211b17" stroke="#4a3c32" stroke-width="3"/>
+            <!-- Sloped White Canopy Roof Overlay Lines -->
+            <rect x="240" y="16" width="664" height="508" rx="10" fill="url(#canopyGrid)"/>
+            <line x1="572" y1="16" x2="572" y2="524" stroke="#fef3c7" stroke-opacity="0.12" stroke-width="2" stroke-dasharray="10,6"/>
+            <text x="572" y="30" text-anchor="middle" fill="#fef3c7" fill-opacity="0.28" font-size="9" font-family="JetBrains Mono">SLOPED WHITE CANOPY TERRACE RIDGE</text>
+
+            <!-- FL-III Licensed Premise Boundary (Red-ink regulatory boundary) -->
+            <rect x="20" y="20" width="880" height="500" rx="10" fill="none" stroke="#fb7185" stroke-opacity="0.45" stroke-width="1.5" stroke-dasharray="8,5"/>
+            <text x="890" y="34" text-anchor="end" fill="#fda4af" fill-opacity="0.7" font-size="9" font-family="JetBrains Mono">MAHARASHTRA FL-III LICENSED PERMIT-ROOM BOUNDARY</text>
+
+            <!-- ========================================================= -->
+            <!-- ZONE A: LEFT CORRIDOR — ENCLOSED KITCHEN & BAR COUNTER    -->
+            <!-- ========================================================= -->
+            <g id="zone-kitchen-bar" class="svg-zone" onclick="inspectZone('bar')">
+              <!-- Washrooms Top-Left -->
+              <rect x="24" y="24" width="120" height="68" rx="6" fill="#29221d" stroke="#4a3c32" stroke-width="1.5"/>
+              <line x1="64" y1="24" x2="64" y2="92" stroke="#4a3c32" stroke-width="1"/>
+              <line x1="104" y1="24" x2="104" y2="92" stroke="#4a3c32" stroke-width="1"/>
+              <text x="84" y="62" text-anchor="middle" fill="#a8a29e" font-size="9" font-family="JetBrains Mono">WASHROOMS</text>
+
+              <!-- Enclosed Kitchen Room (Solid White Walls + Glass Windows) -->
+              <rect x="24" y="100" width="125" height="310" rx="6" fill="#2c241e" stroke="#e7e5e4" stroke-width="2.5"/>
+              <!-- Kitchen Internal Equipment -->
+              <rect x="32" y="112" width="32" height="110" rx="3" fill="#44403c" stroke="#78716c"/>
+              <circle cx="48" cy="135" r="6" fill="#292524" stroke="#a8a29e"/>
+              <circle cx="48" cy="158" r="6" fill="#292524" stroke="#a8a29e"/>
+              <rect x="32" y="240" width="32" height="150" rx="3" fill="#44403c" stroke="#78716c"/>
+              <text x="72" y="255" text-anchor="middle" transform="rotate(-90 72 255)" fill="#e7e5e4" font-size="11" font-weight="bold" font-family="JetBrains Mono" letter-spacing="2">ENCLOSED KITCHEN</text>
+
+              <!-- Large Glass Viewing Windows (between kitchen & bar) -->
+              <rect x="145" y="135" width="7" height="85" fill="#38bdf8" fill-opacity="0.45" stroke="#bae6fd" stroke-width="1"/>
+              <rect x="145" y="255" width="7" height="85" fill="#38bdf8" fill-opacity="0.45" stroke="#bae6fd" stroke-width="1"/>
+              <text x="137" y="180" text-anchor="end" fill="#7dd3fc" font-size="8" font-family="JetBrains Mono">GLASS</text>
+              <text x="137" y="300" text-anchor="end" fill="#7dd3fc" font-size="8" font-family="JetBrains Mono">WINDOW</text>
+
+              <!-- Long Wooden Service Bar Counter -->
+              <rect x="158" y="100" width="44" height="310" rx="6" fill="url(#woodPlank)" stroke="#d97706" stroke-width="2"/>
+              <text x="180" y="255" text-anchor="middle" transform="rotate(-90 180 255)" fill="#fef3c7" font-size="10" font-weight="bold" font-family="JetBrains Mono" letter-spacing="1.5">CRAFT TAP BAR</text>
+
+              <!-- 8 Live Tap Handles along Bar (Dynamic colors updated by JS) -->
+              <g id="svg-bar-taps"></g>
+
+              <!-- 8 Bar Stools -->
+              <g id="svg-bar-stools"></g>
+
+              <!-- Structural Pillars with Chalkboard Tap Menus -->
+              <rect x="206" y="112" width="16" height="22" rx="2" fill="#1c1917" stroke="#f59e0b" stroke-width="1.2"/>
+              <rect x="206" y="372" width="16" height="22" rx="2" fill="#1c1917" stroke="#f59e0b" stroke-width="1.2"/>
+              <text x="232" y="126" fill="#fbbf24" font-size="8" font-family="JetBrains Mono">CHALKBOARD MENU</text>
+            </g>
+
+            <!-- ========================================================= -->
+            <!-- ZONE B: TOP FAR WALL — PULL-DOWN PROJECTOR SCREEN         -->
+            <!-- ========================================================= -->
+            <g id="zone-projector" class="svg-zone" onclick="inspectZone('projector')">
+              <!-- Projector Light Cone (visible on Match Screening Night) -->
+              <polygon id="svg-projector-beam" points="470,46 670,46 730,210 410,210" fill="url(#projectorBeam)" opacity="0"/>
+              <!-- Screen Housing & Canvas -->
+              <rect x="460" y="26" width="220" height="14" rx="3" fill="#292524" stroke="#78716c" stroke-width="1.5"/>
+              <rect id="svg-projector-screen" x="468" y="38" width="204" height="8" rx="2" fill="#57534e"/>
+              <text id="svg-projector-label" x="570" y="59" text-anchor="middle" fill="#a8a29e" font-size="9" font-family="JetBrains Mono">PULL-DOWN PROJECTOR SCREEN (STANDBY)</text>
+            </g>
+
+            <!-- ========================================================= -->
+            <!-- ZONE C: CENTRAL WALKWAY & CONGESTION HEATMAP              -->
+            <!-- ========================================================= -->
+            <g id="zone-walkway" class="svg-zone" onclick="inspectZone('walkway')">
+              <rect x="242" y="72" width="128" height="335" rx="8" fill="#261f1a" fill-opacity="0.55" stroke="#362c25" stroke-dasharray="4,4"/>
+              <text x="306" y="245" text-anchor="middle" transform="rotate(-90 306 245)" fill="#fef3c7" fill-opacity="0.22" font-size="11" font-family="JetBrains Mono" letter-spacing="3">CENTRAL WALKWAY</text>
+              <!-- Dynamic Congestion Heat Circles -->
+              <circle id="heat-entry" cx="290" cy="405" r="78" fill="url(#heatHigh)"/>
+              <circle id="heat-bar" cx="245" cy="240" r="65" fill="url(#heatMed)"/>
+            </g>
+
+            <!-- ========================================================= -->
+            <!-- ZONE D: RIGHT SIDE — 6 LONG COMMUNAL WOODEN TABLES        -->
+            <!-- ========================================================= -->
+            <!-- Tables 1-6 rendered dynamically with individual seat blocks -->
+            <g id="svg-communal-tables"></g>
+
+            <!-- Board Game Shelf Corner (Upper Right) -->
+            <g id="zone-boardgames" class="svg-zone" onclick="inspectZone('boardgames')">
+              <rect x="788" y="34" width="102" height="44" rx="6" fill="#2d231c" stroke="#d97706" stroke-width="1.5"/>
+              <text x="839" y="53" text-anchor="middle" fill="#fbbf24" font-size="9" font-weight="bold" font-family="JetBrains Mono">BOARD GAMES</text>
+              <text x="839" y="66" text-anchor="middle" fill="#fde68a" font-size="8" font-family="JetBrains Mono">Catan • Jenga • Uno</text>
+            </g>
+
+            <!-- ========================================================= -->
+            <!-- ZONE E: BOTTOM ENTRANCE STAIRCASE & PROPOSED WAIT LOUNGE  -->
+            <!-- ========================================================= -->
+            <!-- 6th-Floor Staircase Entry (Bottom Left) -->
+            <g id="zone-stairs" class="svg-zone" onclick="inspectZone('stairs')">
+              <rect x="24" y="424" width="210" height="88" rx="8" fill="#29221d" stroke="#78716c" stroke-width="2"/>
+              <!-- Stair treads -->
+              <g stroke="#78716c" stroke-width="1.5">
+                <line x1="45" y1="432" x2="45" y2="504"/>
+                <line x1="62" y1="432" x2="62" y2="504"/>
+                <line x1="79" y1="432" x2="79" y2="504"/>
+                <line x1="96" y1="432" x2="96" y2="504"/>
+                <line x1="113" y1="432" x2="113" y2="504"/>
+                <line x1="130" y1="432" x2="130" y2="504"/>
+                <line x1="147" y1="432" x2="147" y2="504"/>
+              </g>
+              <text x="188" y="463" text-anchor="middle" fill="#e7e5e4" font-size="10" font-weight="bold" font-family="JetBrains Mono">6F STAIRS</text>
+              <text x="188" y="477" text-anchor="middle" fill="#a8a29e" font-size="8" font-family="JetBrains Mono">ENTRANCE</text>
+              <!-- Entry Arrow -->
+              <path d="M 242 468 L 274 468" stroke="#10b981" stroke-width="2.5" marker-end="url(#arrow)"/>
+              <!-- Walk-away / Balking Counter Badge -->
+              <rect x="28" y="430" width="114" height="22" rx="4" fill="#450a0a" stroke="#ef4444" stroke-width="1"/>
+              <text id="svg-walkaway-badge" x="85" y="444" text-anchor="middle" fill="#fca5a5" font-size="8.5" font-weight="bold" font-family="JetBrains Mono">WALK-AWAYS: 14/hr</text>
+            </g>
+
+            <!-- Proposed FL-III Licensed Wait Lounge & Express Kiosk (Bottom Right) -->
+            <g id="zone-waitlounge" class="svg-zone" onclick="inspectZone('waitlounge')">
+              <rect id="svg-waitlounge-box" x="380" y="416" width="512" height="98" rx="10" fill="#281d14" stroke="#f59e0b" stroke-width="2"/>
+              
+              <!-- Express Kiosk Counter (Left side of Wait Lounge) -->
+              <rect x="392" y="428" width="142" height="74" rx="6" fill="url(#woodPlank)" stroke="#fbbf24" stroke-width="1.5"/>
+              <text x="463" y="452" text-anchor="middle" fill="#fef3c7" font-size="9.5" font-weight="bold" font-family="JetBrains Mono">EXPRESS KIOSK</text>
+              <text x="463" y="466" text-anchor="middle" fill="#fde68a" font-size="8" font-family="JetBrains Mono">150ml Tasters + Bites</text>
+              <rect x="412" y="476" width="102" height="16" rx="3" fill="#181411" stroke="#f59e0b" stroke-width="1"/>
+              <text id="svg-kiosk-status" x="463" y="487" text-anchor="middle" fill="#34d399" font-size="8" font-weight="bold" font-family="JetBrains Mono">KIOSK ONLINE</text>
+
+              <!-- High-Top Waiting Perch Area & Live Party Tokens -->
+              <text x="712" y="432" text-anchor="middle" fill="#fbbf24" font-size="9" font-weight="bold" font-family="JetBrains Mono">FL-III LICENSED WAIT LOUNGE (ACTIVE QUEUE TOKENS)</text>
+              <line x1="550" y1="466" x2="875" y2="466" stroke="#78350f" stroke-width="3" stroke-linecap="round"/>
+              <!-- Dynamic Party Tokens rendered by JS -->
+              <g id="svg-wait-tokens"></g>
+            </g>
+
+            <!-- Decorative Rooftop Planters -->
+            <circle cx="255" cy="48" r="10" fill="#065f46" stroke="#34d399" stroke-width="1.5"/>
+            <circle cx="882" cy="396" r="10" fill="#065f46" stroke="#34d399" stroke-width="1.5"/>
+            <circle cx="364" cy="498" r="9" fill="#065f46" stroke="#34d399" stroke-width="1.5"/>
+          </svg>
+        </div>
+
+        <!-- Spatial Zone Telemetry Inspector (4 cols on lg) -->
+        <div class="lg:col-span-4 bg-espresso-850 border border-espresso-700 rounded-xl p-4 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between border-b border-espresso-700 pb-2.5 mb-3">
+              <span class="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-bold">
+                Spatial Telemetry Inspector
+              </span>
+              <span id="inspector-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                LIVE ZONE
+              </span>
+            </div>
+
+            <h3 id="inspector-title" class="font-display font-bold text-base text-cream-100 mb-1">
+              FL-III Licensed Wait Lounge &amp; Express Kiosk
+            </h3>
+            <p id="inspector-desc" class="text-xs text-cream-200/75 leading-relaxed mb-4">
+              Positioned immediately inside the 6th-floor entrance boundary. Intercepts arriving groups during peak weekend queues with QR waitlist tokens, 150ml taster pours, and quick kitchen bites—eliminating staircase congestion.
+            </p>
+
+            <!-- Dynamic Zone Metrics Grid -->
+            <div id="inspector-metrics" class="grid grid-cols-2 gap-2.5 mb-4">
+              <div class="bg-espresso-900 p-2.5 rounded-lg border border-espresso-700">
+                <div class="text-[10px] font-mono text-cream-200/60">ACTIVE WAITING</div>
+                <div id="insp-m1" class="font-mono text-base font-bold text-amber-400">6 Parties</div>
+              </div>
+              <div class="bg-espresso-900 p-2.5 rounded-lg border border-espresso-700">
+                <div class="text-[10px] font-mono text-cream-200/60">TASTER CONVERSION</div>
+                <div id="insp-m2" class="font-mono text-base font-bold text-emerald-400">68%</div>
+              </div>
+              <div class="bg-espresso-900 p-2.5 rounded-lg border border-espresso-700">
+                <div class="text-[10px] font-mono text-cream-200/60">EXCISE ZONE STATUS</div>
+                <div id="insp-m3" class="font-mono text-xs font-bold text-cream-100 mt-1">FL-III On-Premise</div>
+              </div>
+              <div class="bg-espresso-900 p-2.5 rounded-lg border border-espresso-700">
+                <div class="text-[10px] font-mono text-cream-200/60">AVG KIOSK TAB</div>
+                <div id="insp-m4" class="font-mono text-base font-bold text-amber-300">₹420</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Zone Selector Buttons for Mobile/Accessibility -->
+          <div class="pt-3 border-t border-espresso-700">
+            <div class="text-[10px] font-mono text-cream-200/60 mb-2">QUICK INSPECT ZONES:</div>
+            <div class="flex flex-wrap gap-1.5">
+              <button onclick="inspectZone('waitlounge')" class="px-2.5 py-1 rounded-lg bg-espresso-900 hover:bg-espresso-700 border border-espresso-600 text-[11px] text-amber-300 font-medium">Wait Lounge</button>
+              <button onclick="inspectZone('bar')" class="px-2.5 py-1 rounded-lg bg-espresso-900 hover:bg-espresso-700 border border-espresso-600 text-[11px] text-cream-200 font-medium">Tap Bar &amp; Kitchen</button>
+              <button onclick="inspectZone('table-1')" class="px-2.5 py-1 rounded-lg bg-espresso-900 hover:bg-espresso-700 border border-espresso-600 text-[11px] text-cream-200 font-medium">Table 1</button>
+              <button onclick="inspectZone('table-4')" class="px-2.5 py-1 rounded-lg bg-espresso-900 hover:bg-espresso-700 border border-espresso-600 text-[11px] text-cream-200 font-medium">Table 4</button>
+              <button onclick="inspectZone('projector')" class="px-2.5 py-1 rounded-lg bg-espresso-900 hover:bg-espresso-700 border border-espresso-600 text-[11px] text-cream-200 font-medium">Projector</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SECTION 3: DUAL TOUCHPOINT SIMULATOR (SPLIT VIEW)                   -->
+    <!-- =================================================================== -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- ================================================================= -->
+      <!-- LEFT PANEL: GUEST EXPRESS KIOSK & MOBILE WAITLIST APP (5 COLS)    -->
+      <!-- ================================================================= -->
+      <div class="lg:col-span-5 bg-espresso-900 border border-espresso-700 rounded-2xl overflow-hidden shadow-xl flex flex-col">
+        <!-- Mobile/Kiosk Top Header -->
+        <div class="bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 px-5 py-4 text-espresso-950 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] font-mono font-bold uppercase tracking-widest opacity-85">
+              Guest Touchpoint • QR / Kiosk Pass
+            </div>
+            <h2 class="font-display font-bold text-xl leading-tight">
+              Doolally Express Lounge
+            </h2>
+          </div>
+          <span class="px-2.5 py-1 rounded-full bg-espresso-950 text-amber-400 font-mono text-xs font-bold">
+            KHAR 6F
+          </span>
+        </div>
+
+        <div class="p-4 sm:p-5 flex flex-col gap-5">
+          
+          <!-- Step 1: Join Waitlist / Active Token Card -->
+          <div class="bg-espresso-850 border border-espresso-700 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-mono font-bold text-amber-400 uppercase">1. Digital Waitlist Pass</span>
+              <span id="guest-scenario-tag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                EXPRESS KIOSK ACTIVE
+              </span>
+            </div>
+
+            <!-- Join Form -->
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 mb-3">
+              <div class="sm:col-span-6">
+                <label class="block text-[11px] text-cream-200/70 mb-1">Guest Name</label>
+                <input id="input-guest-name" type="text" value="Aarav S." placeholder="Enter name" class="w-full px-3 py-2 rounded-lg bg-espresso-950 border border-espresso-600 text-sm text-cream-100 focus:outline-none focus:border-amber-500" />
+              </div>
+              <div class="sm:col-span-6">
+                <label class="block text-[11px] text-cream-200/70 mb-1">Party Size</label>
+                <select id="input-party-size" class="w-full px-3 py-2 rounded-lg bg-espresso-950 border border-espresso-600 text-sm text-cream-100 focus:outline-none focus:border-amber-500">
+                  <option value="1">1 Guest (Solo)</option>
+                  <option value="2" selected>2 Guests (Couple)</option>
+                  <option value="3">3 Guests</option>
+                  <option value="4">4 Guests</option>
+                  <option value="6">6 Guests (Group)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Mug Club 50% Extra Pour Toggle -->
+            <div class="flex items-center justify-between bg-espresso-900/90 px-3 py-2 rounded-lg border border-espresso-700/80 mb-3">
+              <div>
+                <div class="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                  <span>🍺 Mug Club Member Perks</span>
+                </div>
+                <div class="text-[11px] text-cream-200/65">+50% extra pour volume on tasters (225ml vs 150ml)</div>
+              </div>
+              <input id="check-mug-club" type="checkbox" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" onchange="renderGuestPass()" />
+            </div>
+
+            <button onclick="issueGuestToken()" class="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-espresso-950 font-bold text-xs sm:text-sm transition-colors shadow-md">
+              Generate Digital Waitlist Token
+            </button>
+
+            <!-- Active Token Display -->
+            <div id="active-token-card" class="mt-3.5 pt-3.5 border-t border-espresso-700 flex items-center justify-between gap-2">
+              <div>
+                <div class="text-[10px] font-mono text-cream-200/60">ACTIVE PASS</div>
+                <div class="flex items-baseline gap-2">
+                  <span id="token-id" class="font-mono text-xl font-bold text-amber-400">#DL-108</span>
+                  <span id="token-meta" class="text-xs text-cream-200">Aarav S. (2 Pax)</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-[10px] font-mono text-cream-200/60">QUEUE POS / EST. WAIT</div>
+                <div id="token-wait" class="font-mono text-sm font-bold text-emerald-400">#3 in line • ~18 mins</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: While-You-Wait Express Menu -->
+          <div id="express-menu-wrapper" class="bg-espresso-850 border border-espresso-700 rounded-xl p-4 transition-opacity">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-mono font-bold text-amber-400 uppercase">2. While-You-Wait Express Menu</span>
+              <span class="text-[10px] font-mono text-cream-200/60">FL-III Lounge Service</span>
+            </div>
+
+            <!-- Baseline Lock Overlay Notice (Shown only in Scenario 1) -->
+            <div id="baseline-menu-notice" class="hidden bg-rose-950/60 border border-rose-500/40 rounded-lg p-3 mb-3 text-xs text-rose-200">
+              <strong>Scenario 1 (Baseline Mode):</strong> Express Kiosk is disabled. Waiting guests stand on the staircase with no F&amp;B service until seated. Switch to <strong>Scenario 2 or 3</strong> to test Express Kiosk ordering.
+            </div>
+
+            <!-- 150ml Taster Pours -->
+            <div class="mb-3">
+              <div class="text-[11px] font-semibold text-cream-200/80 mb-2 flex justify-between">
+                <span>150ml Craft Taster Pours (On Tap)</span>
+                <span id="pour-size-badge" class="font-mono text-amber-400">150ml Standard</span>
+              </div>
+              <div id="menu-tasters" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+            </div>
+
+            <!-- Quick Express Snacks -->
+            <div>
+              <div class="text-[11px] font-semibold text-cream-200/80 mb-2">Quick Kitchen Bites (5-Min Prep)</div>
+              <div id="menu-snacks" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+            </div>
+          </div>
+
+          <!-- Step 3: Live Express Tab & Table-Ready SMS Simulation -->
+          <div class="bg-espresso-850 border border-amber-500/30 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-mono font-bold text-amber-400 uppercase">3. Live Express Tab &amp; Table Transfer</span>
+              <span id="tab-total" class="font-mono text-base font-bold text-cream-100">₹0</span>
+            </div>
+
+            <div id="tab-items-list" class="text-xs text-cream-200/70 space-y-1 max-h-28 overflow-y-auto mb-3 pr-1">
+              <div class="italic text-cream-200/50">No items added yet. Tap any taster or snack above to add to your waiting tab.</div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2">
+              <button onclick="simulateTableReadySMS()" class="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-espresso-950 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                <span>Simulate Table-Ready SMS &amp; Seat Party</span>
+              </button>
+              <button onclick="clearGuestTab()" class="px-3 py-2.5 rounded-xl bg-espresso-900 hover:bg-espresso-700 border border-espresso-600 text-xs text-cream-200 font-medium">
+                Clear Tab
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- RIGHT PANEL: MANAGER OPERATIONS & KEG VELOCITY DASHBOARD (7 COLS) -->
+      <!-- ================================================================= -->
+      <div class="lg:col-span-7 bg-espresso-900 border border-espresso-700 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-5">
+        
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-espresso-700 pb-3">
+          <div>
+            <div class="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-400">
+              Back-of-House Operations • Discrete-Event Queue Engine
+            </div>
+            <h2 class="font-display font-bold text-xl text-cream-100">
+              Manager Digital Twin &amp; Keg Velocity Dashboard
+            </h2>
+          </div>
+          <div class="text-right">
+            <span class="text-[11px] font-mono text-cream-200/70">Capacity: </span>
+            <span class="font-mono text-xs font-bold text-amber-300">48 Communal + 8 Bar Seats</span>
+          </div>
+        </div>
+
+        <!-- 5 Live KPI Comparison Cards (Current Scenario vs Baseline) -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+          <!-- KPI 1: Avg Wait Time -->
+          <div class="bg-espresso-850 border border-espresso-700 rounded-xl p-3 flex flex-col justify-between">
+            <div class="text-[10px] font-mono text-cream-200/65 uppercase">Avg Wait Time</div>
+            <div id="kpi-wait" class="font-mono text-2xl font-bold text-amber-400 my-1">24m</div>
+            <div id="kpi-wait-delta" class="text-[10px] font-mono text-emerald-400">vs 56m Baseline</div>
+          </div>
+
+          <!-- KPI 2: Walk-Away / Reneging Rate -->
+          <div class="bg-espresso-850 border border-espresso-700 rounded-xl p-3 flex flex-col justify-between">
+            <div class="text-[10px] font-mono text-cream-200/65 uppercase">Walk-Away Rate</div>
+            <div id="kpi-renege" class="font-mono text-2xl font-bold text-emerald-400 my-1">6%</div>
+            <div id="kpi-renege-delta" class="text-[10px] font-mono text-emerald-400">vs 34% Baseline</div>
+          </div>
+
+          <!-- KPI 3: Wait-Lounge Conversion -->
+          <div class="bg-espresso-850 border border-espresso-700 rounded-xl p-3 flex flex-col justify-between">
+            <div class="text-[10px] font-mono text-cream-200/65 uppercase">Lounge Conversion</div>
+            <div id="kpi-conv" class="font-mono text-2xl font-bold text-amber-300 my-1">72%</div>
+            <div id="kpi-conv-delta" class="text-[10px] font-mono text-cream-200/60">vs 0% Baseline</div>
+          </div>
+
+          <!-- KPI 4: Incremental Waiting Revenue -->
+          <div class="bg-espresso-850 border border-espresso-700 rounded-xl p-3 flex flex-col justify-between">
+            <div class="text-[10px] font-mono text-cream-200/65 uppercase">Wait-Lounge Rev</div>
+            <div id="kpi-rev" class="font-mono text-xl font-bold text-emerald-400 my-1">₹9,450<span class="text-xs font-normal">/hr</span></div>
+            <div id="kpi-rev-delta" class="text-[10px] font-mono text-emerald-400">Captured pre-seating</div>
+          </div>
+
+          <!-- KPI 5: Communal Seat Utilization -->
+          <div class="col-span-2 sm:col-span-1 bg-espresso-850 border border-espresso-700 rounded-xl p-3 flex flex-col justify-between">
+            <div class="text-[10px] font-mono text-cream-200/65 uppercase">Seat Utilization</div>
+            <div id="kpi-util" class="font-mono text-2xl font-bold text-amber-400 my-1">91%</div>
+            <div id="kpi-util-delta" class="text-[10px] font-mono text-emerald-400">vs 68% Baseline</div>
+          </div>
+        </div>
+
+        <!-- Scenario Diagnostic Insight Banner -->
+        <div id="scenario-diagnostic" class="bg-espresso-950/90 border-l-4 border-amber-500 rounded-r-xl p-3.5 text-xs text-cream-200/90 leading-relaxed">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Live Keg Velocity & Blow-Time Gauges -->
+        <div class="bg-espresso-850 border border-espresso-700 rounded-xl p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-xs font-mono font-bold text-amber-400 uppercase">
+                Live Craft Keg Velocity &amp; Predictive Blow-Time Telemetry
+              </h3>
+              <p class="text-[11px] text-cream-200/65">
+                Tracks main bar pints + Express Kiosk 150ml tasters. Swap kegs below 20% to prevent tap stockouts.
+              </p>
+            </div>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-espresso-900 border border-espresso-600 text-cream-200/80">
+              30L KEGS • FLOW METERS
+            </span>
+          </div>
+
+          <div id="keg-gauges-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Live Discrete-Event Operations Feed -->
+        <div class="bg-espresso-950 border border-espresso-700 rounded-xl p-3.5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-mono font-bold text-cream-200/70 uppercase tracking-wider">
+              Discrete-Event Simulation Log
+            </span>
+            <span class="text-[10px] font-mono text-amber-400">REAL-TIME STREAM</span>
+          </div>
+          <div id="ops-log" class="font-mono text-[11px] space-y-1.5 max-h-36 overflow-y-auto text-cream-200/80 pr-1">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- ASSUMPTIONS & EVIDENCE LOG MODAL                                      -->
+  <!-- ===================================================================== -->
+  <div id="evidence-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="bg-espresso-900 border border-espresso-600 rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 bg-espresso-850 border-b border-espresso-700 flex items-center justify-between">
+        <div>
+          <span class="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
+            Research Rigor &amp; Model Transparency
+          </span>
+          <h3 class="font-display font-bold text-lg text-cream-100">
+            Assumptions &amp; Evidence Log — Doolally Taproom Khar
+          </h3>
+        </div>
+        <button onclick="toggleEvidenceModal(false)" class="p-1.5 rounded-lg bg-espresso-800 hover:bg-espresso-700 text-cream-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-5 text-xs text-cream-200/85 leading-relaxed">
+        <!-- Verified Observations -->
+        <div>
+          <h4 class="font-mono font-bold text-emerald-400 uppercase text-[11px] mb-2 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            1. Verified Primary &amp; Secondary Evidence (Real-World Anchor)
+          </h4>
+          <ul class="space-y-2 bg-espresso-950 p-3.5 rounded-xl border border-espresso-800 list-disc pl-5">
+            <li><strong>Spatial Layout (6th Floor, Multilink House, Khar West):</strong> Derived from video walkthroughs—rectangular rooftop terrace with a sloped white canopy roof, staircase entry opening onto the floor, left-side enclosed kitchen with glass viewing windows and long bar counter, pillar-mounted chalkboard tap menus, long wooden communal tables on the right, and a pull-down projector screen on the far wall.</li>
+            <li><strong>Official Craft Styles &amp; Benchmarks:</strong> Doolally's official tap styles include <em>Apple Cider, Alphonso Mead, Belgian Witbier, Oatmeal Stout, Hefeweizen,</em> and <em>IPA/NEIPA</em>; video walkthroughs also verify seasonal <em>Strawberry Mead</em> and 30–50ml tasting glasses. Zomato Khar benchmarks a pint at ~₹330 and ₹1,500 for two.</li>
+            <li><strong>Food &amp; Mug Club Evidence:</strong> Starter items (e.g., <em>Bhuna Kathal Quesadillas, Prawn Koliwada</em>) are anchored in Doolally Mumbai listings; Mug Club's <em>"50% more with every pour"</em> perk is verified on Doolally's official Mug Club page.</li>
+            <li><strong>Maharashtra State Excise Regulatory Boundary:</strong> Under Maharashtra FL-III rules, on-premises liquor consumption is strictly restricted to the pre-approved, plan-marked permit room area (consuming liquor in public outside licensed premises is prohibited). Sealed off-consumption takeaway beer requires a separate FL/BR-II retail licence; therefore, the proposed Express Kiosk operates strictly as an <strong>on-premises FL-III Wait Lounge</strong> inside the licensed rooftop boundary.</li>
+          </ul>
+        </div>
+
+        <!-- Simulated Discrete-Event Assumptions -->
+        <div>
+          <h4 class="font-mono font-bold text-amber-400 uppercase text-[11px] mb-2 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            2. Simulated Discrete-Event Queue &amp; Digital Twin Assumptions
+          </h4>
+          <ul class="space-y-2 bg-espresso-950 p-3.5 rounded-xl border border-espresso-800 list-disc pl-5">
+            <li><strong>Seating Topology:</strong> Modeled as 6 communal wooden tables (8 seats each = 48 seats) + 8 bar stools = 56 total capacity. In Scenarios 1 &amp; 2, parties occupy whole communal table sections (leaving stranded seats); Scenario 3 enables seat-level communal matching (+24% effective capacity utilization).</li>
+            <li><strong>Balking &amp; Reneging Thresholds:</strong> Based on restaurant queueing literature (DES models), unengaged guests waiting on stairs (Scenario 1) exhibit a sharp reneging curve once estimated wait exceeds 25 minutes. Engaging waiting guests in the FL-III Wait Lounge with 150ml tasters (₹165–₹190) and quick bites increases wait tolerance to ~55 minutes and converts 68–74% of waiting parties into pre-seating revenue.</li>
+            <li><strong>Disclaimer:</strong> All live queue wait times, conversion rates, revenue figures, and keg depletion rates in this dashboard are <strong>simulated outputs</strong> generated for scenario evaluation and are not live POS feeds from Doolally Taproom.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="px-5 py-3 bg-espresso-850 border-t border-espresso-700 flex justify-end">
+        <button onclick="toggleEvidenceModal(false)" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-espresso-950 font-bold text-xs">
+          Close Log
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT SIMULATION & INTERACTIVITY ENGINE                          -->
+  <!-- ===================================================================== -->
+  <script>
+    // =========================================================================
+    // 1. STATE & DATA DEFINITIONS
+    // =========================================================================
+    const MENU_TASTERS = [
+      { id: 'cider', name: 'Apple Cider', abv: '4.5%', price: 170, tapIdx: 0 },
+      { id: 'straw', name: 'Strawberry Mead', abv: '5.0%', price: 185, tapIdx: 1 },
+      { id: 'alphonso', name: 'Alphonso Mead', abv: '5.5%', price: 185, tapIdx: 2 },
+      { id: 'wit', name: 'Belgian Witbier', abv: '4.8%', price: 165, tapIdx: 3 },
+      { id: 'stout', name: 'Oatmeal Stout', abv: '5.2%', price: 175, tapIdx: 4 },
+      { id: 'neipa', name: 'Hazy NEIPA', abv: '6.2%', price: 190, tapIdx: 5 },
+    ];
+
+    const MENU_SNACKS = [
+      { id: 'fries', name: 'House Fries & Aioli', prep: '4m', price: 195 },
+      { id: 'kathal', name: 'Bhuna Kathal Quesadilla', prep: '5m', price: 240 },
+      { id: 'prawn', name: 'Prawn Koliwada Poppers', prep: '6m', price: 280 },
+      { id: 'sliders', name: 'Chicken Ghee Roast Sliders', prep: '6m', price: 295 },
+    ];
+
+    const INITIAL_KEGS = [
+      { id: 'cider', name: 'Apple Cider', style: 'Crisp Cider • 4.5%', remainingPct: 42, baseRateLph: 5.8 },
+      { id: 'straw', name: 'Strawberry Mead', style: 'Seasonal • 5.0%', remainingPct: 18, baseRateLph: 6.4 },
+      { id: 'alphonso', name: 'Alphonso Mead', style: 'Mango Mead • 5.5%', remainingPct: 64, baseRateLph: 4.9 },
+      { id: 'wit', name: 'Belgian Witbier', style: 'Spiced Wheat • 4.8%', remainingPct: 77, baseRateLph: 4.2 },
+      { id: 'stout', name: 'Oatmeal Stout', style: 'Dark Roast • 5.2%', remainingPct: 53, baseRateLph: 3.1 },
+      { id: 'neipa', name: 'Hazy NEIPA', style: 'Hop-Forward • 6.2%', remainingPct: 29, baseRateLph: 5.1 },
+    ];
+
+    const state = {
+      scenario: 3, // Default to Scenario 3 so user immediately sees full capabilities, can switch to 1 or 2
+      simMinutes: 19 * 60 + 30, // 19:30 (7:30 PM Saturday Peak)
+      arrivalRate: 32, // parties/hr
+      turnTime: 75, // mins
+      matchNight: false,
+      kegs: JSON.parse(JSON.stringify(INITIAL_KEGS)),
+      // 6 Long Communal Wooden Tables (each has 8 seats: top 4, bottom 4)
+      tables: [
+        { id: 1, name: 'Table 1 (North-West)', seats: [1,1,1,1, 1,1,0,0], parties: ['Kabir (4)', 'Meera (2)'] },
+        { id: 2, name: 'Table 2 (North-East)', seats: [1,1,1,0, 1,1,1,0], parties: ['Rohan (3)', 'Sneha (3)'] },
+        { id: 3, name: 'Table 3 (Mid-West)',   seats: [1,1,1,1, 1,1,1,1], parties: ['Vikram Group (8)'] },
+        { id: 4, name: 'Table 4 (Mid-East)',   seats: [1,1,0,0, 1,1,0,0], parties: ['Ananya (2)', 'Dev (2)'] },
+        { id: 5, name: 'Table 5 (South-West)', seats: [1,1,1,0, 1,1,1,1], parties: ['Nikhil (4)', 'Tara (3)'] },
+        { id: 6, name: 'Table 6 (South-East)', seats: [1,1,1,1, 1,1,0,0], parties: ['Aditya (4)', 'Pooja (2)'] },
+      ],
+      barStoolsOccupied: 7, // out of 8
+      waitQueue: [
+        { token: '#DL-104', name: 'Siddharth', pax: 2, hasTaster: true, waitMins: 14 },
+        { token: '#DL-105', name: 'Priya K.', pax: 4, hasTaster: true, waitMins: 11 },
+        { token: '#DL-106', name: 'Zoya & Co', pax: 3, hasTaster: false, waitMins: 8 },
+        { token: '#DL-107', name: 'Karan M.', pax: 2, hasTaster: true, waitMins: 5 },
+      ],
+      nextTokenNum: 108,
+      activeGuest: {
+        token: '#DL-108',
+        name: 'Aarav S.',
+        pax: 2,
+        mugClub: false,
+        tab: [],
+        seatedAtTable: null
+      },
+      walkAwaysPerHr: 3,
+      selectedZone: 'waitlounge',
+      logs: [
+        '[19:30] Simulation initialized at Saturday 7:30 PM peak rush (Khar 6F Rooftop).',
+        '[19:28] Strawberry Mead keg reached 18% remaining — predictive blow-time ~52 mins.',
+        '[19:25] Party #DL-104 (2 pax) ordered 2x Apple Cider tasters at FL-III Express Kiosk.'
+      ]
+    };
+
+    // =========================================================================
+    // 2. INITIALIZATION & UI RENDERING
+    // =========================================================================
+    function init() {
+      renderMenuButtons();
+      renderFloorPlan();
+      setScenario(3);
+      renderGuestPass();
+      renderLogs();
+    }
+
+    function showToast(title, message, type = 'amber') {
+      const container = document.getElementById('toast-container');
+      const colors = {
+        amber: 'bg-espresso-850 border-amber-500 text-cream-100',
+        emerald: 'bg-espresso-850 border-emerald-500 text-emerald-100',
+        crimson: 'bg-espresso-850 border-rose-500 text-rose-100'
+      };
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto border-l-4 ${colors[type] || colors.amber} rounded-xl p-3.5 shadow-2xl transition-all duration-300 transform translate-y-2 opacity-0`;
+      toast.innerHTML = `
+        <div class="font-bold text-xs text-amber-400 mb-0.5">${title}</div>
+        <div class="text-xs text-cream-200/90 leading-snug">${message}</div>
+      `;
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    function addLog(text) {
+      const hrs = String(Math.floor(state.simMinutes / 60) % 24).padStart(2, '0');
+      const mins = String(state.simMinutes % 60).padStart(2, '0');
+      state.logs.unshift(`[${hrs}:${mins}] ${text}`);
+      if (state.logs.length > 25) state.logs.pop();
+      renderLogs();
+    }
+
+    function renderLogs() {
+      const el = document.getElementById('ops-log');
+      el.innerHTML = state.logs.map(line => {
+        const isAlert = line.includes('ALERT') || line.includes('walked away') || line.includes('18%') || line.includes('low');
+        return `<div class="${isAlert ? 'text-amber-300' : 'text-cream-200/75'}">${line}</div>`;
+      }).join('');
+    }
+
+    // =========================================================================
+    // 3. SCENARIO & SIMULATION ENGINE
+    // =========================================================================
+    function setScenario(num) {
+      state.scenario = num;
+
+      // Update scenario button styles
+      [1, 2, 3].forEach(n => {
+        const btn = document.getElementById(`btn-scen-${n}`);
+        if (n === num) {
+          btn.className = 'scen-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-espresso-950 shadow';
+        } else {
+          btn.className = 'scen-btn px-3 py-1.5 rounded-lg text-xs font-medium text-cream-200/75 hover:text-cream-100 hover:bg-espresso-800';
+        }
+      });
+
+      // Toggle Express Kiosk availability in Guest Panel
+      const menuWrapper = document.getElementById('express-menu-wrapper');
+      const baselineNotice = document.getElementById('baseline-menu-notice');
+      const scenarioTag = document.getElementById('guest-scenario-tag');
+
+      if (num === 1) {
+        baselineNotice.classList.remove('hidden');
+        menuWrapper.classList.add('opacity-60');
+        scenarioTag.textContent = 'MANUAL CLIPBOARD';
+        scenarioTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30';
+      } else {
+        baselineNotice.classList.add('hidden');
+        menuWrapper.classList.remove('opacity-60');
+        scenarioTag.textContent = num === 2 ? 'EXPRESS KIOSK ACTIVE' : 'SMART TWIN + KIOSK';
+        scenarioTag.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+      }
+
+      // Adjust communal table seat packing visually when switching scenarios
+      rebalanceTablesForScenario();
+      recalculateKPIs();
+      renderFloorPlan();
+      renderGuestPass();
+      inspectZone(state.selectedZone);
+
+      const names = {
+        1: 'Scenario 1: Baseline (Manual Queue)',
+        2: 'Scenario 2: Express Kiosk + Digital Waitlist',
+        3: 'Scenario 3: Full Digital Twin + Smart Communal Seating'
+      };
+      addLog(`Switched simulation mode to ${names[num]}.`);
+    }
+
+    function rebalanceTablesForScenario() {
+      if (state.scenario === 1) {
+        // Rigid whole-table allocation: small parties leave stranded empty seats
+        state.tables[0].seats = [1,1,0,0, 1,1,0,0];
+        state.tables[1].seats = [1,1,1,0, 0,0,0,0];
+        state.tables[3].seats = [1,1,0,0, 0,0,0,0];
+        state.tables[5].seats = [1,1,1,1, 0,0,0,0];
+      } else if (state.scenario === 2) {
+        // Slightly better host coordination via SMS alerts
+        state.tables[0].seats = [1,1,1,0, 1,1,0,0];
+        state.tables[1].seats = [1,1,1,0, 1,1,0,0];
+        state.tables[3].seats = [1,1,0,0, 1,1,0,0];
+        state.tables[5].seats = [1,1,1,1, 1,1,0,0];
+      } else {
+        // Scenario 3: Smart seat-level communal table packing
+        state.tables[0].seats = [1,1,1,1, 1,1,1,0];
+        state.tables[1].seats = [1,1,1,1, 1,1,1,0];
+        state.tables[3].seats = [1,1,1,0, 1,1,1,1];
+        state.tables[5].seats = [1,1,1,1, 1,1,1,0];
+      }
+    }
+
+    function updateSimParams() {
+      state.arrivalRate = parseInt(document.getElementById('slider-arrival').value, 10);
+      state.turnTime = parseInt(document.getElementById('slider-turn').value, 10);
+      document.getElementById('val-arrival').textContent = `${state.arrivalRate} parties/hr`;
+      document.getElementById('val-turn').textContent = `${state.turnTime} mins`;
+      recalculateKPIs();
+      renderFloorPlan();
+      renderGuestPass();
+    }
+
+    function toggleMatchNight() {
+      state.matchNight = !state.matchNight;
+      const btn = document.getElementById('toggle-match');
+      const dot = document.getElementById('toggle-match-dot');
+      btn.setAttribute('aria-checked', String(state.matchNight));
+      if (state.matchNight) {
+        btn.classList.remove('bg-espresso-700');
+        btn.classList.add('bg-amber-500');
+        dot.classList.add('translate-x-5');
+        addLog('Match Screening Night ENABLED: Pull-down projector active (+18m avg dwell time).');
+        showToast('Match Screening Night Active', 'Projector screen illuminated. Dwell time increased by +18 mins and pour velocity rose by 20%.', 'amber');
+      } else {
+        btn.classList.add('bg-espresso-700');
+        btn.classList.remove('bg-amber-500');
+        dot.classList.remove('translate-x-5');
+        addLog('Match Screening Night disabled: Standard weekend taproom flow.');
+      }
+      recalculateKPIs();
+      renderFloorPlan();
+      renderGuestPass();
+    }
+
+    function recalculateKPIs() {
+      const effectiveTurn = state.turnTime + (state.matchNight ? 18 : 0);
+      // Effective seating units (Scenario 3 unlocks seat-level communal packing)
+      const effectiveUnits = state.scenario === 3 ? 19.5 : (state.scenario === 2 ? 15.2 : 13.8);
+      const serviceCapacityPerHr = effectiveUnits / (effectiveTurn / 60);
+
+      // Compute Baseline metrics for comparison
+      const baseServiceCap = 13.8 / (effectiveTurn / 60);
+      const baseOverload = Math.max(0, state.arrivalRate - baseServiceCap);
+      const baseWait = Math.round(14 + baseOverload * 2.45);
+      const baseRenege = Math.min(58, Math.round(8 + Math.max(0, baseWait - 20) * 0.72));
+
+      // Compute Current Scenario metrics
+      const overload = Math.max(0, state.arrivalRate - serviceCapacityPerHr);
+      let avgWait = Math.round((state.scenario === 3 ? 9 : 12) + overload * (state.scenario === 3 ? 1.55 : 2.15));
+      if (state.scenario === 1) avgWait = baseWait;
+
+      // Walk-away / reneging rate drops sharply when FL-III Wait Lounge engages guests
+      let renegeRate = baseRenege;
+      if (state.scenario === 2) {
+        renegeRate = Math.min(28, Math.max(4, Math.round(baseRenege * 0.36)));
+      } else if (state.scenario === 3) {
+        renegeRate = Math.min(18, Math.max(2, Math.round(baseRenege * 0.18)));
+      }
+
+      state.walkAwaysPerHr = Math.round((state.arrivalRate * renegeRate) / 100);
+
+      // Wait-lounge conversion & incremental revenue
+      const loungeConv = state.scenario === 1 ? 0 : (state.scenario === 2 ? 68 : 74);
+      const waitingGuestsPerHr = Math.min(state.arrivalRate, Math.round(state.arrivalRate * (avgWait > 15 ? 0.78 : 0.42)));
+      const convertedPartiesPerHr = Math.round(waitingGuestsPerHr * (loungeConv / 100));
+      const avgKioskSpend = 435; // ~1.6 tasters + 0.6 quick bites per party
+      const extraTabRev = state.activeGuest.tab.reduce((sum, item) => sum + item.price, 0);
+      const incrementalRev = convertedPartiesPerHr * avgKioskSpend + extraTabRev;
+
+      // Seat utilization
+      const totalSeats = state.tables.reduce((acc, t) => acc + t.seats.length, 0) + 8;
+      const occSeats = state.tables.reduce((acc, t) => acc + t.seats.filter(s => s === 1).length, 0) + state.barStoolsOccupied;
+      const seatUtil = Math.round((occSeats / totalSeats) * 100);
+
+      // Update KPI DOM
+      document.getElementById('kpi-wait').textContent = `${avgWait}m`;
+      document.getElementById('kpi-wait-delta').textContent = state.scenario === 1 ? 'Baseline reference' : `vs ${baseWait}m Baseline (-${baseWait - avgWait}m)`;
+      document.getElementById('kpi-wait-delta').className = `text-[10px] font-mono ${state.scenario === 1 ? 'text-rose-400' : 'text-emerald-400'}`;
+
+      document.getElementById('kpi-renege').textContent = `${renegeRate}%`;
+      document.getElementById('kpi-renege').className = `font-mono text-2xl font-bold my-1 ${renegeRate > 20 ? 'text-rose-400' : 'text-emerald-400'}`;
+      document.getElementById('kpi-renege-delta').textContent = state.scenario === 1 ? `${state.walkAwaysPerHr} parties lost/hr` : `vs ${baseRenege}% Baseline`;
+
+      document.getElementById('kpi-conv').textContent = `${loungeConv}%`;
+      document.getElementById('kpi-conv-delta').textContent = state.scenario === 1 ? 'No kiosk installed' : `${convertedPartiesPerHr} parties/hr ordering`;
+
+      document.getElementById('kpi-rev').innerHTML = `₹${incrementalRev.toLocaleString('en-IN')}<span class="text-xs font-normal">/hr</span>`;
+      document.getElementById('kpi-rev-delta').textContent = state.scenario === 1 ? '₹0 waiting capture' : `Avg ₹${avgKioskSpend}/party`;
+
+      document.getElementById('kpi-util').textContent = `${seatUtil}%`;
+      document.getElementById('kpi-util-delta').textContent = state.scenario === 3 ? 'Smart communal packing' : 'Whole-table allocation';
+
+      // Diagnostic Banner
+      const diag = document.getElementById('scenario-diagnostic');
+      if (state.scenario === 1) {
+        diag.className = 'bg-rose-950/35 border-l-4 border-rose-500 rounded-r-xl p-3.5 text-xs text-cream-200/90 leading-relaxed';
+        diag.innerHTML = `<strong>Baseline Bottleneck Diagnosis:</strong> At <strong>${state.arrivalRate} parties/hr</strong>, unengaged guests stack up on the 6th-floor staircase. With no waiting F&amp;B and rigid whole-table seating (${seatUtil}% seat utilization), <strong>${renegeRate}% (~${state.walkAwaysPerHr} parties/hr)</strong> walk away before being seated.`;
+      } else if (state.scenario === 2) {
+        diag.className = 'bg-amber-950/35 border-l-4 border-amber-500 rounded-r-xl p-3.5 text-xs text-cream-200/90 leading-relaxed';
+        diag.innerHTML = `<strong>Express Kiosk Intervention:</strong> Routing waiting guests into the <strong>FL-III Licensed Wait Lounge</strong> converts <strong>${loungeConv}%</strong> of queued parties into 150ml taster &amp; quick-bite orders (generating <strong>₹${incrementalRev.toLocaleString('en-IN')}/hr</strong>) and slashes walk-aways from ${baseRenege}% down to <strong>${renegeRate}%</strong>.`;
+      } else {
+        diag.className = 'bg-emerald-950/35 border-l-4 border-emerald-500 rounded-r-xl p-3.5 text-xs text-cream-200/90 leading-relaxed';
+        diag.innerHTML = `<strong>Full Digital Twin Optimization:</strong> Combining the <strong>FL-III Express Kiosk</strong> with <strong>seat-level communal table matching</strong> boosts seat utilization to <strong>${seatUtil}%</strong>, drops average wait from ${baseWait}m to <strong>${avgWait}m</strong>, and captures <strong>₹${incrementalRev.toLocaleString('en-IN')}/hr</strong> in pre-seating revenue.`;
+      }
+
+      renderKegGauges();
+      return { avgWait, renegeRate, loungeConv, incrementalRev, seatUtil };
+    }
+
+    function fastForward15() {
+      state.simMinutes += 15;
+      const hrs = String(Math.floor(state.simMinutes / 60) % 24).padStart(2, '0');
+      const mins = String(state.simMinutes % 60).padStart(2, '0');
+      document.getElementById('sim-clock').textContent = `${hrs}:${mins}`;
+
+      // Deplete kegs by 15 mins of pour velocity
+      const mult = state.matchNight ? 1.25 : 1.0;
+      const kioskMult = state.scenario >= 2 ? 1.15 : 1.0;
+      state.kegs.forEach(keg => {
+        const litersPoured = (keg.baseRateLph * mult * kioskMult) * 0.25;
+        const pctDrop = Math.round((litersPoured / 30) * 100);
+        keg.remainingPct = Math.max(0, keg.remainingPct - Math.max(2, pctDrop));
+        if (keg.remainingPct <= 15 && keg.remainingPct > 0) {
+          addLog(`LOW KEG ALERT: ${keg.name} at ${keg.remainingPct}% remaining!`);
+        }
+      });
+
+      // Cycle queue tokens realistically
+      const arrived = Math.max(1, Math.round(state.arrivalRate * 0.25));
+      if (state.scenario === 1 && state.walkAwaysPerHr > 6) {
+        addLog(`+15m step: ${arrived} parties arrived; ${Math.max(1, Math.round(state.walkAwaysPerHr * 0.25))} parties walked away due to staircase queue.`);
+      } else {
+        addLog(`+15m step: ${arrived} parties arrived; Wait Lounge served ${Math.max(2, arrived * 2)} tasters & seated ${Math.max(2, arrived - 1)} groups.`);
+      }
+
+      // Slightly rotate queue tokens
+      if (state.waitQueue.length > 0) {
+        state.waitQueue.shift();
+      }
+      const sampleNames = ['Rhea P.', 'Varun D.', 'Nandini', 'Harsh V.', 'Tanvi R.', 'Omar K.'];
+      const pickName = sampleNames[state.nextTokenNum % sampleNames.length];
+      state.nextTokenNum++;
+      state.waitQueue.push({
+        token: `#DL-${state.nextTokenNum}`,
+        name: pickName,
+        pax: (state.nextTokenNum % 3) + 2,
+        hasTaster: state.scenario >= 2,
+        waitMins: 6
+      });
+
+      recalculateKPIs();
+      renderFloorPlan();
+      renderGuestPass();
+      showToast(`Simulated +15 Minutes (${hrs}:${mins})`, 'Updated keg levels, queue positions, and communal table turnover.', 'amber');
+    }
+
+    function resetSimulation() {
+      state.simMinutes = 19 * 60 + 30;
+      document.getElementById('sim-clock').textContent = '19:30';
+      state.arrivalRate = 32;
+      state.turnTime = 75;
+      document.getElementById('slider-arrival').value = 32;
+      document.getElementById('slider-turn').value = 75;
+      document.getElementById('val-arrival').textContent = '32 parties/hr';
+      document.getElementById('val-turn').textContent = '75 mins';
+      state.kegs = JSON.parse(JSON.stringify(INITIAL_KEGS));
+      state.activeGuest.tab = [];
+      state.activeGuest.seatedAtTable = null;
+      if (state.matchNight) toggleMatchNight();
+      setScenario(3);
+      addLog('Simulation reset to initial Saturday 19:30 baseline parameters.');
+      showToast('Simulation Reset', 'All kegs, queues, and seating states restored.', 'emerald');
+    }
+
+    // =========================================================================
+    // 4. SVG TOP-DOWN SPATIAL DIGITAL TWIN RENDERER
+    // =========================================================================
+    function renderFloorPlan() {
+      // 1. Render 8 Bar Taps & 8 Bar Stools along left bar counter
+      const tapsGroup = document.getElementById('svg-bar-taps');
+      const stoolsGroup = document.getElementById('svg-bar-stools');
+      tapsGroup.innerHTML = '';
+      stoolsGroup.innerHTML = '';
+
+      for (let i = 0; i < 8; i++) {
+        const y = 122 + i * 36;
+        const keg = state.kegs[i % state.kegs.length];
+        const color = keg.remainingPct <= 18 ? '#ef4444' : (keg.remainingPct <= 40 ? '#f59e0b' : '#10b981');
+        // Tap nozzle dot
+        tapsGroup.innerHTML += `<circle cx="195" cy="${y}" r="4.5" fill="${color}" stroke="#181411" stroke-width="1"/>`;
+        // Bar stool circle
+        const stoolOcc = i < state.barStoolsOccupied;
+        stoolsGroup.innerHTML += `<circle cx="212" cy="${y}" r="7.5" fill="${stoolOcc ? '#d97706' : '#292524'}" stroke="#fef3c7" stroke-opacity="0.4" stroke-width="1"/>`;
+      }
+
+      // 2. Render 6 Long Communal Wooden Tables on Right Side (2 columns x 3 rows)
+      const tablesGroup = document.getElementById('svg-communal-tables');
+      tablesGroup.innerHTML = '';
+
+      const coords = [
+        { x: 415, y: 95 },  // Table 1
+        { x: 665, y: 95 },  // Table 2
+        { x: 415, y: 205 }, // Table 3
+        { x: 665, y: 205 }, // Table 4
+        { x: 415, y: 315 }, // Table 5
+        { x: 665, y: 315 }, // Table 6
+      ];
+
+      state.tables.forEach((tbl, idx) => {
+        const { x, y } = coords[idx];
+        const isHighlighted = state.activeGuest.seatedAtTable === tbl.id;
+        let svg = `<g class="svg-zone" onclick="inspectZone('table-${tbl.id}')">`;
+
+        // Highlight ring if active guest was just seated here
+        if (isHighlighted) {
+          svg += `<rect x="${x - 8}" y="${y - 24}" width="206" height="92" rx="10" fill="none" stroke="#10b981" stroke-width="2.5" class="animate-pulse-slow"/>`;
+        }
+
+        // Top 4 bench seats
+        for (let s = 0; s < 4; s++) {
+          const sx = x + 12 + s * 44;
+          const occ = tbl.seats[s] === 1;
+          svg += `<rect x="${sx}" y="${y - 16}" width="34" height="11" rx="3" fill="${occ ? '#d97706' : '#10b981'}" fill-opacity="${occ ? '0.95' : '0.35'}" stroke="#fef3c7" stroke-opacity="0.35" stroke-width="0.8"/>`;
+        }
+
+        // Main Long Wooden Communal Tabletop
+        svg += `<rect x="${x}" y="${y}" width="190" height="44" rx="6" fill="url(#woodPlank)" stroke="${isHighlighted ? '#34d399' : '#b45309'}" stroke-width="2"/>`;
+        const occCount = tbl.seats.filter(s => s === 1).length;
+        svg += `<text x="${x + 95}" y="${y + 20}" text-anchor="middle" fill="#fef3c7" font-size="10" font-weight="bold" font-family="JetBrains Mono">TABLE ${tbl.id}</text>`;
+        svg += `<text x="${x + 95}" y="${y + 33}" text-anchor="middle" fill="#fde68a" font-size="8.5" font-family="JetBrains Mono">${occCount}/8 SEATS OCCUPIED</text>`;
+
+        // Bottom 4 bench seats
+        for (let s = 4; s < 8; s++) {
+          const sx = x + 12 + (s - 4) * 44;
+          const occ = tbl.seats[s] === 1;
+          svg += `<rect x="${sx}" y="${y + 49}" width="34" height="11" rx="3" fill="${occ ? '#d97706' : '#10b981'}" fill-opacity="${occ ? '0.95' : '0.35'}" stroke="#fef3c7" stroke-opacity="0.35" stroke-width="0.8"/>`;
+        }
+
+        svg += `</g>`;
+        tablesGroup.innerHTML += svg;
+      });
+
+      // 3. Projector Screen Match Night State
+      const beam = document.getElementById('svg-projector-beam');
+      const screen = document.getElementById('svg-projector-screen');
+      const label = document.getElementById('svg-projector-label');
+      if (state.matchNight) {
+        beam.setAttribute('opacity', '1');
+        screen.setAttribute('fill', '#38bdf8');
+        label.setAttribute('fill', '#7dd3fc');
+        label.textContent = 'LIVE MATCH SCREENING ACTIVE (HIGH CROWD RETENTION)';
+      } else {
+        beam.setAttribute('opacity', '0');
+        screen.setAttribute('fill', '#57534e');
+        label.setAttribute('fill', '#a8a29e');
+        label.textContent = 'PULL-DOWN PROJECTOR SCREEN (STANDBY)';
+      }
+
+      // 4. Congestion Heatmap & Walk-Away Badge
+      const heatEntry = document.getElementById('heat-entry');
+      const heatBar = document.getElementById('heat-bar');
+      if (state.scenario === 1) {
+        heatEntry.setAttribute('fill', 'url(#heatHigh)');
+        heatBar.setAttribute('fill', 'url(#heatHigh)');
+      } else if (state.scenario === 2) {
+        heatEntry.setAttribute('fill', 'url(#heatLow)');
+        heatBar.setAttribute('fill', 'url(#heatMed)');
+      } else {
+        heatEntry.setAttribute('fill', 'url(#heatLow)');
+        heatBar.setAttribute('fill', 'url(#heatLow)');
+      }
+      document.getElementById('svg-walkaway-badge').textContent = `WALK-AWAYS: ${state.walkAwaysPerHr}/hr`;
+
+      // 5. Wait Lounge & Kiosk Visual State + Live Tokens
+      const kioskStatus = document.getElementById('svg-kiosk-status');
+      const waitTokensGroup = document.getElementById('svg-wait-tokens');
+      waitTokensGroup.innerHTML = '';
+
+      if (state.scenario === 1) {
+        kioskStatus.textContent = 'OFFLINE (BASELINE)';
+        kioskStatus.setAttribute('fill', '#f87171');
+        waitTokensGroup.innerHTML = `<text x="712" y="485" text-anchor="middle" fill="#fca5a5" font-size="9.5" font-family="JetBrains Mono">NO WAIT LOUNGE — GUESTS CROWDING STAIRCASE</text>`;
+      } else {
+        kioskStatus.textContent = 'KIOSK ONLINE';
+        kioskStatus.setAttribute('fill', '#34d399');
+
+        // Combine simulated queue + active guest (if not yet seated)
+        const displayQueue = [...state.waitQueue];
+        if (!state.activeGuest.seatedAtTable) {
+          displayQueue.push({
+            token: state.activeGuest.token,
+            name: state.activeGuest.name,
+            pax: state.activeGuest.pax,
+            hasTaster: state.activeGuest.tab.length > 0,
+            isUser: true
+          });
+        }
+
+        displayQueue.slice(0, 5).forEach((party, idx) => {
+          const cx = 578 + idx * 64;
+          const cy = 482;
+          const fill = party.isUser ? '#10b981' : '#f59e0b';
+          waitTokensGroup.innerHTML += `
+            <g>
+              <circle cx="${cx}" cy="${cy}" r="16" fill="${fill}" fill-opacity="0.22" stroke="${fill}" stroke-width="1.8"/>
+              <text x="${cx}" y="${cy - 2}" text-anchor="middle" fill="#fef3c7" font-size="8" font-weight="bold" font-family="JetBrains Mono">${party.token}</text>
+              <text x="${cx}" y="${cy + 8}" text-anchor="middle" fill="#fde68a" font-size="7" font-family="JetBrains Mono">${party.pax}p${party.hasTaster ? '🍺' : ''}</text>
+            </g>
+          `;
+        });
+      }
+    }
+
+    function inspectZone(zoneKey) {
+      state.selectedZone = zoneKey;
+      const title = document.getElementById('inspector-title');
+      const desc = document.getElementById('inspector-desc');
+      const badge = document.getElementById('inspector-badge');
+      const m1 = document.getElementById('insp-m1');
+      const m2 = document.getElementById('insp-m2');
+      const m3 = document.getElementById('insp-m3');
+      const m4 = document.getElementById('insp-m4');
+
+      if (zoneKey === 'waitlounge') {
+        badge.textContent = state.scenario === 1 ? 'INACTIVE IN S1' : 'ACTIVE INTERVENTION';
+        title.textContent = 'FL-III Licensed Wait Lounge & Express Kiosk';
+        desc.textContent = 'Located immediately inside the 6th-floor rooftop entrance boundary. Serves 150ml craft tasters and quick kitchen snacks to waiting parties with QR tokens, converting dead wait time into revenue.';
+        m1.textContent = state.scenario === 1 ? '0 (Stair Queue)' : `${state.waitQueue.length + 1} Parties`;
+        m2.textContent = state.scenario === 1 ? '0%' : (state.scenario === 2 ? '68%' : '74%');
+        m3.textContent = 'FL-III On-Premise';
+        m4.textContent = '₹435 / party';
+      } else if (zoneKey === 'bar') {
+        badge.textContent = 'OPERATIONS CORRIDOR';
+        title.textContent = 'Left-Side Enclosed Kitchen & Craft Tap Bar';
+        desc.textContent = 'Matches Khar layout: solid white kitchen walls with large glass viewing windows, 8-stool wooden bar counter, chalkboard tap menus on structural pillars, and live IoT keg flow sensors.';
+        const lowestKeg = [...state.kegs].sort((a, b) => a.remainingPct - b.remainingPct)[0];
+        m1.textContent = `${state.barStoolsOccupied}/8 Stools`;
+        m2.textContent = `${lowestKeg.name} (${lowestKeg.remainingPct}%)`;
+        m3.textContent = '5-Min Express Pass';
+        m4.textContent = '8 Active Taps';
+      } else if (zoneKey === 'projector') {
+        badge.textContent = state.matchNight ? 'LIVE SCREENING' : 'STANDBY';
+        title.textContent = 'Far-Wall Pull-Down Projector Screen';
+        desc.textContent = 'Anchored on the north wall facing down the central walkway. During IPL/Premier League screenings, average table dwell time rises by +18 minutes, making smart seat-level packing essential.';
+        m1.textContent = state.matchNight ? 'ON (Match Night)' : 'OFF (Standard)';
+        m2.textContent = state.matchNight ? '+18 mins dwell' : '+0 mins';
+        m3.textContent = 'Full Floor Sightline';
+        m4.textContent = state.matchNight ? '+20% Pour Rate' : 'Normal Flow';
+      } else if (zoneKey === 'boardgames') {
+        badge.textContent = 'COMMUNITY ZONE';
+        title.textContent = 'Board Game Shelf & Community Corner';
+        desc.textContent = 'Signature Doolally community touchpoint (Catan, Jenga, Uno, Sequence). Increases guest engagement at communal tables while encouraging longer group stays.';
+        m1.textContent = '14 Games Active';
+        m2.textContent = 'High Group Dwell';
+        m3.textContent = 'Self-Serve Shelf';
+        m4.textContent = 'Zero Table Fee';
+      } else if (zoneKey === 'stairs' || zoneKey === 'walkway') {
+        badge.textContent = state.scenario === 1 ? 'HIGH FRICTION' : 'DECONGESTED';
+        title.textContent = '6th-Floor Staircase Entrance & Central Walkway';
+        desc.textContent = 'Primary arrival chokepoint. In Scenario 1, unengaged parties crowd the stairs and central aisle, causing high walk-aways. Scenarios 2 & 3 clear this path into the Wait Lounge.';
+        m1.textContent = `${state.arrivalRate} parties/hr`;
+        m2.textContent = `${state.walkAwaysPerHr} walk-aways/hr`;
+        m3.textContent = state.scenario === 1 ? 'Congested' : 'Clear Flow';
+        m4.textContent = 'Multilink 6F Entry';
+      } else if (zoneKey.startsWith('table-')) {
+        const id = parseInt(zoneKey.split('-')[1], 10);
+        const tbl = state.tables.find(t => t.id === id);
+        const occ = tbl.seats.filter(s => s === 1).length;
+        const open = 8 - occ;
+        badge.textContent = open > 0 ? `${open} SEATS OPEN` : 'FULL TABLE';
+        title.textContent = `${tbl.name} — Communal Bench`;
+        desc.textContent = state.scenario === 3
+          ? 'Smart Communal Seating ENABLED: Individual open bench seats can be matched to incoming 1–3 pax parties from the Wait Lounge.'
+          : 'Whole-table allocation mode: Open seats remain stranded until the entire bench clears.';
+        m1.textContent = `${occ} / 8 Seats`;
+        m2.textContent = `${open} Open Slots`;
+        m3.textContent = tbl.parties.join(', ');
+        m4.textContent = state.scenario === 3 ? 'Seat-Level Match' : 'Table-Level Only';
+      }
+    }
+
+    // =========================================================================
+    // 5. GUEST EXPRESS KIOSK & MOBILE WAITLIST INTERACTIONS
+    // =========================================================================
+    function renderMenuButtons() {
+      const tastersEl = document.getElementById('menu-tasters');
+      const snacksEl = document.getElementById('menu-snacks');
+
+      tastersEl.innerHTML = MENU_TASTERS.map(item => `
+        <button onclick="addToGuestTab('taster', '${item.id}')" class="text-left p-2.5 rounded-lg bg-espresso-900 hover:bg-espresso-700 border border-espresso-700 hover:border-amber-500/50 transition-all flex items-center justify-between group">
+          <div>
+            <div class="text-xs font-semibold text-cream-100 group-hover:text-amber-300">${item.name}</div>
+            <div class="text-[10px] font-mono text-cream-200/60">ABV ${item.abv} • Taster</div>
+          </div>
+          <span class="font-mono text-xs font-bold text-amber-400 bg-espresso-950 px-2 py-1 rounded">₹${item.price}</span>
+        </button>
+      `).join('');
+
+      snacksEl.innerHTML = MENU_SNACKS.map(item => `
+        <button onclick="addToGuestTab('snack', '${item.id}')" class="text-left p-2.5 rounded-lg bg-espresso-900 hover:bg-espresso-700 border border-espresso-700 hover:border-amber-500/50 transition-all flex items-center justify-between group">
+          <div>
+            <div class="text-xs font-semibold text-cream-100 group-hover:text-amber-300">${item.name}</div>
+            <div class="text-[10px] font-mono text-cream-200/60">Prep ~${item.prep}</div>
+          </div>
+          <span class="font-mono text-xs font-bold text-amber-400 bg-espresso-950 px-2 py-1 rounded">₹${item.price}</span>
+        </button>
+      `).join('');
+    }
+
+    function issueGuestToken() {
+      const nameInput = document.getElementById('input-guest-name').value.trim() || 'Guest';
+      const pax = parseInt(document.getElementById('input-party-size').value, 10);
+      const mugClub = document.getElementById('check-mug-club').checked;
+
+      state.nextTokenNum++;
+      state.activeGuest = {
+        token: `#DL-${state.nextTokenNum}`,
+        name: nameInput,
+        pax,
+        mugClub,
+        tab: [],
+        seatedAtTable: null
+      };
+
+      renderGuestPass();
+      renderFloorPlan();
+      addLog(`Issued Digital Waitlist Token ${state.activeGuest.token} to ${nameInput} (${pax} pax)${mugClub ? ' [Mug Club]' : ''}.`);
+      showToast(`Token ${state.activeGuest.token} Issued`, `${nameInput} (${pax} pax) added to the FL-III Wait Lounge queue.`, 'emerald');
+    }
+
+    function addToGuestTab(type, id) {
+      if (state.scenario === 1) {
+        showToast('Express Kiosk Disabled in Baseline', 'Switch to Scenario 2 or Scenario 3 to order 150ml tasters & quick bites while waiting.', 'crimson');
+        return;
+      }
+
+      const mugClub = document.getElementById('check-mug-club').checked;
+      state.activeGuest.mugClub = mugClub;
+
+      if (type === 'taster') {
+        const item = MENU_TASTERS.find(t => t.id === id);
+        const pourVol = mugClub ? '225ml (Mug Club +50%)' : '150ml';
+        state.activeGuest.tab.push({ name: `${item.name} [${pourVol}]`, price: item.price });
+
+        // Deduct micro-volume from corresponding keg
+        const keg = state.kegs[item.tapIdx];
+        keg.remainingPct = Math.max(0, keg.remainingPct - 1);
+        addLog(`Kiosk Order (${state.activeGuest.token}): ${item.name} (${pourVol}) — ₹${item.price}.`);
+      } else {
+        const item = MENU_SNACKS.find(s => s.id === id);
+        state.activeGuest.tab.push({ name: item.name, price: item.price });
+        addLog(`Kiosk Order (${state.activeGuest.token}): ${item.name} — ₹${item.price}.`);
+      }
+
+      recalculateKPIs();
+      renderGuestPass();
+      renderFloorPlan();
+    }
+
+    function clearGuestTab() {
+      state.activeGuest.tab = [];
+      recalculateKPIs();
+      renderGuestPass();
+      renderFloorPlan();
+    }
+
+    function renderGuestPass() {
+      const mugClub = document.getElementById('check-mug-club').checked;
+      document.getElementById('pour-size-badge').textContent = mugClub ? '225ml (+50% Mug Club)' : '150ml Standard';
+
+      document.getElementById('token-id').textContent = state.activeGuest.token;
+      document.getElementById('token-meta').textContent = `${state.activeGuest.name} (${state.activeGuest.pax} Pax)${mugClub ? ' • 🍺 Mug Club' : ''}`;
+
+      const kpis = {
+        wait: document.getElementById('kpi-wait').textContent
+      };
+
+      if (state.activeGuest.seatedAtTable) {
+        document.getElementById('token-wait').textContent = `SEATED AT TABLE ${state.activeGuest.seatedAtTable}`;
+        document.getElementById('token-wait').className = 'font-mono text-sm font-bold text-emerald-400';
+      } else {
+        const pos = state.waitQueue.length + 1;
+        document.getElementById('token-wait').textContent = `#${pos} in line • ~${kpis.wait}`;
+        document.getElementById('token-wait').className = 'font-mono text-sm font-bold text-amber-400';
+      }
+
+      const listEl = document.getElementById('tab-items-list');
+      const total = state.activeGuest.tab.reduce((s, i) => s + i.price, 0);
+      document.getElementById('tab-total').textContent = `₹${total.toLocaleString('en-IN')}`;
+
+      if (state.activeGuest.tab.length === 0) {
+        listEl.innerHTML = `<div class="italic text-cream-200/50">No items added yet. Tap any taster or snack above to add to your waiting tab.</div>`;
+      } else {
+        listEl.innerHTML = state.activeGuest.tab.map(item => `
+          <div class="flex justify-between items-center py-0.5 border-b border-espresso-800/80">
+            <span class="text-cream-100">${item.name}</span>
+            <span class="font-mono text-amber-400">₹${item.price}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function simulateTableReadySMS() {
+      // Find a table with enough open seats for the active guest
+      const needed = state.activeGuest.pax;
+      let targetTable = state.tables.find(t => t.seats.filter(s => s === 0).length >= needed);
+      if (!targetTable) targetTable = state.tables[3]; // Fallback Table 4
+
+      // Fill seats on target table
+      let seatedCount = 0;
+      targetTable.seats = targetTable.seats.map(s => {
+        if (s === 0 && seatedCount < needed) {
+          seatedCount++;
+          return 1;
+        }
+        return s;
+      });
+      targetTable.parties.push(`${state.activeGuest.name} (${needed})`);
+      state.activeGuest.seatedAtTable = targetTable.id;
+
+      const tabTotal = state.activeGuest.tab.reduce((s, i) => s + i.price, 0);
+      recalculateKPIs();
+      renderFloorPlan();
+      renderGuestPass();
+      inspectZone(`table-${targetTable.id}`);
+
+      const msg = `SMS Sent to ${state.activeGuest.name}: "Your seats at Table ${targetTable.id} are ready! Your Express Lounge tab (₹${tabTotal}) has been seamlessly transferred."`;
+      addLog(msg);
+      showToast(`Table-Ready SMS Alert (${state.activeGuest.token})`, msg, 'emerald');
+    }
+
+    // =========================================================================
+    // 6. MANAGER KEG VELOCITY & SWAP CONTROLS
+    // =========================================================================
+    function renderKegGauges() {
+      const grid = document.getElementById('keg-gauges-grid');
+      const mult = (state.matchNight ? 1.25 : 1.0) * (state.scenario >= 2 ? 1.15 : 1.0);
+
+      grid.innerHTML = state.kegs.map((keg, idx) => {
+        const rate = (keg.baseRateLph * mult).toFixed(1);
+        const litersLeft = (30 * (keg.remainingPct / 100)).toFixed(1);
+        const minsLeft = rate > 0 ? Math.round((litersLeft / rate) * 60) : 0;
+        const isLow = keg.remainingPct <= 20;
+        const isMed = keg.remainingPct > 20 && keg.remainingPct <= 45;
+
+        const barColor = isLow ? 'bg-rose-500' : (isMed ? 'bg-amber-500' : 'bg-emerald-500');
+        const borderClass = isLow ? 'border-rose-500/60' : 'border-espresso-700';
+
+        return `
+          <div class="bg-espresso-900 border ${borderClass} rounded-xl p-3 flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-start gap-1 mb-1">
+                <div>
+                  <div class="text-xs font-bold text-cream-100">${keg.name}</div>
+                  <div class="text-[10px] font-mono text-cream-200/60">${keg.style}</div>
+                </div>
+                <span class="font-mono text-xs font-bold ${isLow ? 'text-rose-400' : 'text-amber-400'}">${keg.remainingPct}%</span>
+              </div>
+              <div class="w-full h-2 bg-espresso-950 rounded-full overflow-hidden my-2">
+                <div class="h-full ${barColor} transition-all duration-300" style="width: ${keg.remainingPct}%"></div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-[10px] font-mono text-cream-200/70 pt-1">
+              <span>${rate} L/hr • ~${minsLeft}m left</span>
+              ${isLow ? `<button onclick="swapKeg(${idx})" class="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold">Swap Keg</button>` : `<span>${litersLeft}L</span>`}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function swapKeg(idx) {
+      const keg = state.kegs[idx];
+      keg.remainingPct = 100;
+      recalculateKPIs();
+      renderFloorPlan();
+      addLog(`CELLAR ACTION: Fresh 30L keg tapped for ${keg.name} (100% full).`);
+      showToast('Fresh Keg Tapped', `${keg.name} restored to 100% (30L) on the main bar & Express Kiosk.`, 'emerald');
+    }
+
+    // =========================================================================
+    // 7. MODAL TOGGLE
+    // =========================================================================
+    function toggleEvidenceModal(show) {
+      const modal = document.getElementById('evidence-modal');
+      if (show) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      } else {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    // Boot prototype
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

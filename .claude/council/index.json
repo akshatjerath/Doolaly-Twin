@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "workspace": "E:/Github/Doolaly Twin",
+  "sessions": [
+    {
+      "id": "doolally-khar-twin-phase1-plan-20261114-1454",
+      "slug": "doolally-khar-twin-phase1-plan",
+      "idea": "Doolally Khar digital twin \u00e2\u20ac\u201d Phase 1 plan",
+      "created": "2026-11-14T09:24:37Z",
+      "updated": "2026-11-14T09:24:37Z",
+      "phase": "planning",
+      "status": "active",
+      "profile": "balanced",
+      "agents": [
+        "Architect",
+        "Alchemist",
+        "Artisan",
+        "Skeptic",
+        "Craftsman",
+        "Tuner",
+        "Advocate"
+      ],
+      "skills_used": [
+        "a11y-audit",
+        "api-design",
+        "codebase-context",
+        "design-system-architecture",
+        "edge-case-enumeration",
+        "failure-mode-analysis",
+        "interaction-design",
+        "motion-design",
+        "performance-audit",
+        "schema-evaluation",
+        "testing-strategy"
+      ],
+      "contract_generated": false,
+      "contract_issue": null,
+      "archived_to": null
+    }
+  ]
+}
