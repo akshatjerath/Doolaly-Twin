@@ -32,7 +32,7 @@ export function createCrowd(scene: THREE.Scene, spots: TableSpot[]) {
   const outline = toWorld(OUTLINE), gate = gateSpan(), steps = zoneRect('steps');
   const gx = (gate.x0 + gate.x1) / 2;
   const gateOut: P2 = [gx, outline.z1 + 0.9], gateIn: P2 = [gx, outline.z1 - 0.9];
-  const stepsLow: P2 = [(steps.x0 + steps.x1) / 2, steps.z1 + 0.4], stepsHigh: P2 = [(steps.x0 + steps.x1) / 2, steps.z0 - 0.4];
+  const midZ = (steps.z0 + steps.z1) / 2, stepsLow: P2 = [steps.x0 - 0.4, midZ], stepsHigh: P2 = [steps.x1 + 0.4, midZ]; // the passage between the outdoor and indoor doors
   const lounge = toWorld(layout.proposed.find((z) => z.id === 'lounge')!.rect);
   const counter = toWorld(layout.proposed.find((z) => z.id === 'takeaway')!.rect);
   const counterPt: P2 = [counter.x1 + 0.6, (counter.z0 + counter.z1) / 2];

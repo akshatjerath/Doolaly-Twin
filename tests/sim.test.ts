@@ -62,14 +62,16 @@ describe('engine', () => {
       }
   });
 
-  it('with ample tables nobody waits or walks away', () => {
-    const k = computeKpis(night('baseline', 0, { ...p, lower_6tops: 200 }), { ...p, lower_6tops: 200 });
+  it('with a very light evening nobody waits or walks away', () => {
+    // The seat count is capped by the plan (81), so "ample" is made by cutting demand, not by adding tables.
+    const q = { ...p, arrival_scale: 0.05 };
+    const k = computeKpis(night('baseline', 0, q), q);
     expect(k.walkaway_pct).toBe(0);
     expect(k.mean_wait_all_min).toBe(0);
   });
 
   it('with no tables nobody is seated and all are counted as lost', () => {
-    const q = { ...p, outdoor_4tops: 0, outdoor_2tops: 0, hall_8tops: 0, hall_6tops: 0, lower_6tops: 0 };
+    const q = { ...p, indoor_2tops: 0, indoor_3tops: 0, indoor_4tops: 0, indoor_high4: 0, outdoor_2tops: 0, outdoor_3tops: 0, outdoor_4tops: 0, outdoor_high6: 0, outdoor_high8: 0 };
     const k = computeKpis(night('baseline', 0, q), q);
     expect(k.seated).toBe(0);
     expect(k.lost_parties).toBe(k.arrivals);

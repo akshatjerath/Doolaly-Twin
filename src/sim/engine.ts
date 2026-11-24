@@ -1,4 +1,5 @@
 import type { SimParams } from '../data/params.ts';
+import { layout } from '../data/layout.ts';
 import { mulberry32, mix, normal } from './rng.ts';
 
 export interface Scenario {
@@ -60,21 +61,29 @@ export interface SimEvent {
 export interface PolicyChange { t: number; to: Scenario }
 
 export interface Table {
-  zone: 'outdoor' | 'hall' | 'small';
+  zone: 'outdoor' | 'hall';
   seats: number;
   party: number;
+  /** Floor-plan table id (layout.json), so the scene draws this table where the plan puts it. */
+  id: string;
 }
+
+/** Which table type and zone each seating parameter controls. A slider of n takes the first n plan tables of that type in that zone. */
+export const TABLE_PARAMS: [keyof SimParams, 'outdoor' | 'hall', string][] = [
+  ['indoor_2tops', 'hall', 'T2'], ['indoor_3tops', 'hall', 'T3'], ['indoor_4tops', 'hall', 'T4'], ['indoor_high4', 'hall', 'HT4'],
+  ['outdoor_2tops', 'outdoor', 'T2'], ['outdoor_3tops', 'outdoor', 'T3'], ['outdoor_4tops', 'outdoor', 'T4'], ['outdoor_high6', 'outdoor', 'HT6'], ['outdoor_high8', 'outdoor', 'HT8'],
+];
 
 export function buildTables(p: SimParams): Table[] {
   const out: Table[] = [];
-  const add = (zone: Table['zone'], seats: number, n: number) => {
-    for (let i = 0; i < n; i++) out.push({ zone, seats, party: -1 });
-  };
-  add('outdoor', 4, p.outdoor_4tops);
-  add('outdoor', 2, p.outdoor_2tops);
-  add('hall', 8, p.hall_8tops);
-  add('hall', 6, p.hall_6tops);
-  add('small', 6, p.lower_6tops);
+  // Outdoor first, then indoor: the order the tables are tried in is the order they are listed.
+  for (const zone of ['outdoor', 'hall'] as const) {
+    for (const [key, z, type] of TABLE_PARAMS) {
+      if (z !== zone) continue;
+      layout.tables.filter((t) => t.zone === z && t.type === type).slice(0, Math.max(0, Math.floor(Number(p[key]) || 0)))
+        .forEach((t) => out.push({ zone, seats: layout.tableTypes[type].seats, party: -1, id: t.id }));
+    }
+  }
   return out;
 }
 
@@ -120,7 +129,7 @@ export function findTables(tables: Table[], size: number, allowJoin: boolean): n
   if (!allowJoin) return null;
   let pick: number[] | null = null;
   let pickSeats = Infinity;
-  for (const zone of ['outdoor', 'hall', 'small'] as const) {
+  for (const zone of ['outdoor', 'hall'] as const) {
     const free = tables.map((t, i) => ({ t, i })).filter((x) => x.t.zone === zone && x.t.party < 0).sort((a, b) => b.t.seats - a.t.seats);
     const chosen: number[] = [];
     let seats = 0;

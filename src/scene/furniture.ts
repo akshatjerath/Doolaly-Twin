@@ -1,55 +1,47 @@
 import type { SimParams } from '../data/params.ts';
-import { zoneRect, type Rect } from '../data/layout.ts';
+import { layout, toWorld } from '../data/layout.ts';
 import { buildTables } from '../sim/engine.ts';
 
 export interface Seat { x: number; z: number; rot: number }
 export interface TableSpot {
-  zone: 'outdoor' | 'hall' | 'small';
+  zone: 'outdoor' | 'hall';
+  /** Floor-plan table id from layout.json. */
+  id: string;
   x: number;
   z: number;
   seats: number;
-  /** Bar-height table with stools (outdoor, per listing photo 1). */
+  /** High table with stools (the plan's HT types). */
   high: boolean;
-  /** True when the long side runs along z. */
+  /** True when the long side runs along z (a table drawn rotated 90 degrees). */
   alongZ: boolean;
+  /** Table-top length along its long side and width across it, in metres. */
+  len: number;
+  wid: number;
   chairs: Seat[];
 }
 
-/** Table-top length for a seat count: guests sit along the two long sides. */
-export const tableLength = (seats: number) => (seats <= 2 ? 0.7 : 0.62 * (seats / 2) + 0.05);
-
-function grid(r: Rect, n: number): { x: number; z: number; alongZ: boolean }[] {
-  if (n <= 0) return [];
-  const w = r.x1 - r.x0, d = r.z1 - r.z0;
-  const cols = Math.max(1, Math.min(n, Math.round(Math.sqrt((n * w) / d))));
-  const rows = Math.ceil(n / cols);
-  const alongZ = d / rows > w / cols;
-  return Array.from({ length: n }, (_, i) => ({
-    x: r.x0 + (w * ((i % cols) + 0.5)) / cols,
-    z: r.z0 + (d * (Math.floor(i / cols) + 0.5)) / rows,
-    alongZ,
-  }));
-}
+// Plan geometry (px): the footprint includes chairs; chairs sit 17 px in from the footprint edge, the table top starts 41 px in.
+const SEAT_INSET = 17, EDGE = 41;
 
 /**
- * Every table and chair drawn in the scene. The list comes from the simulation's own
- * table list, in the same order, so a logged table index points at this furniture.
+ * Every table and chair drawn in the scene. Tables come from the simulation's own table list, in the same order,
+ * so a logged table index points at this furniture. Positions are the floor-plan positions in layout.json.
  */
 export function placeTables(p: SimParams): TableSpot[] {
-  const sim = buildTables(p);
-  const out: TableSpot[] = [];
-  for (const zone of ['outdoor', 'hall', 'small'] as const) {
-    const r = zoneRect(zone), pad = 0.4;
-    const mine = sim.filter((t) => t.zone === zone);
-    const cells = grid({ x0: r.x0 + pad, z0: r.z0 + pad, x1: r.x1 - pad, z1: r.z1 - pad }, mine.length);
-    mine.forEach((t, i) => {
-      const g = cells[i], perSide = Math.max(1, t.seats / 2), chairs: Seat[] = [];
-      for (const side of [-1, 1]) for (let k = 0; k < perSide; k++) {
-        const a = (k - (perSide - 1) / 2) * 0.62, off = side * 0.62;
-        chairs.push(g.alongZ ? { x: g.x + off, z: g.z + a, rot: side > 0 ? -Math.PI / 2 : Math.PI / 2 } : { x: g.x + a, z: g.z + off, rot: side > 0 ? Math.PI : 0 });
+  const s = layout.metresPerPx.value;
+  return buildTables(p).map((t) => {
+    const def = layout.tables.find((x) => x.id === t.id)!, type = layout.tableTypes[def.type];
+    const alongZ = def.rot === 90;
+    const c = toWorld([def.cx, def.cy, def.cx, def.cy]);
+    const long = type.w, across = type.h;
+    const a = type.seats === 3 ? 2 : Math.ceil(type.seats / 2);
+    const chairs: Seat[] = [];
+    [a, type.seats - a].forEach((n, side) => {
+      for (let k = 0; k < n; k++) {
+        const along = ((k + 0.5) / n - 0.5) * long * s, off = (side === 0 ? -1 : 1) * (across / 2 - SEAT_INSET) * s;
+        chairs.push(alongZ ? { x: c.x0 + off, z: c.z0 + along, rot: side ? -Math.PI / 2 : Math.PI / 2 } : { x: c.x0 + along, z: c.z0 + off, rot: side ? Math.PI : 0 });
       }
-      out.push({ zone, x: g.x, z: g.z, seats: t.seats, high: zone === 'outdoor', alongZ: g.alongZ, chairs });
     });
-  }
-  return out;
+    return { zone: t.zone, id: t.id, x: c.x0, z: c.z0, seats: type.seats, high: type.high, alongZ, len: long * s, wid: (across - 2 * EDGE) * s, chairs };
+  });
 }

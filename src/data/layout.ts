@@ -1,6 +1,6 @@
 import raw from './layout.json' with { type: 'json' };
 
-export type ZoneId = 'entrance' | 'pavement' | 'outdoor' | 'steps' | 'hall' | 'small' | 'passage' | 'bar' | 'kitchen';
+export type ZoneId = 'entrance' | 'pavement' | 'outdoor' | 'steps' | 'hall' | 'passage' | 'bar' | 'kitchen';
 
 export interface Zone {
   id: ZoneId;
@@ -19,12 +19,14 @@ export const layout = raw as unknown as {
   metresPerPx: { value: number; tag: string; note: string };
   stepCount: { value: number; tag: string; note: string };
   stepRiseM: { value: number; tag: string; note: string };
+  tableTypes: Record<string, { seats: number; w: number; h: number; high: boolean }>;
+  tables: { id: string; zone: 'outdoor' | 'hall'; type: string; cx: number; cy: number; rot?: number }[];
   proposed: { id: 'kiosk' | 'lounge' | 'takeaway'; scenario: 'A' | 'B' | 'C'; label: string; rect: number[]; note: string }[];
   zones: Zone[];
 };
 
 // Sketch outline in pixels; the scene is centred on it.
-export const OUTLINE = [15, 40, 1290, 950];
+export const OUTLINE = [0, 0, 4200, 1440];
 const CX = (OUTLINE[0] + OUTLINE[2]) / 2;
 const CY = (OUTLINE[1] + OUTLINE[3]) / 2;
 
@@ -48,10 +50,11 @@ export function gateSpan() {
   return { x0: e.x0 + 0.3, x1: e.x1 - 0.3 };
 }
 
-/** Floor height at a point: ground, the raised inside floor, or part-way up the steps. */
+/** Floor height at a point. The Chembur plans show no level change, so the floor is flat unless the step count is raised. */
 export function floorY(x: number, z: number): number {
-  const hall = zoneRect('hall'), small = zoneRect('small'), steps = zoneRect('steps');
-  if ((x > hall.x0 && z < hall.z1) || (x > small.x0 && z >= hall.z1)) return platformY();
+  const hall = zoneRect('hall'), steps = zoneRect('steps');
+  if (platformY() <= 0) return 0;
+  if (x > hall.x0) return platformY();
   if (x > steps.x0 && x < steps.x1 && z >= steps.z0 && z < steps.z1) return (platformY() * (steps.z1 - z)) / (steps.z1 - steps.z0);
   return 0;
 }

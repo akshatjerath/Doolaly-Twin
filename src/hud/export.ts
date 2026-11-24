@@ -12,7 +12,7 @@ export function resultsCsv(r: Results, policy: string, isBaseline: boolean, swee
   const cells = (c: CI | null, d: number) => (c && c.n >= r.n / 2 ? [c.mean.toFixed(d), c.lo.toFixed(d), c.hi.toFixed(d), String(c.n)] : [NO_DATA, '', '', String(c?.n ?? 0)]);
   const cols = (name: string) => [`${name}_mean`, `${name}_lo95`, `${name}_hi95`, `${name}_evenings`];
   const lines = [
-    '# Doolally Khar twin. SIMULATED, not measured. Basis of every figure: ASSUMED inputs.',
+    '# Doolally Chembur twin. SIMULATED, not measured. Basis of every figure: ASSUMED inputs.',
     `# Policy: ${policy}. ${r.n} seeded evenings. lo95 and hi95 are the run-to-run spread of the mean, not forecast accuracy.`,
     ['kpi', 'label', 'tag', ...cols('baseline'), ...(isBaseline ? [] : [...cols('policy'), ...cols('change')])].join(','),
     ...r.rows.map((row) => {

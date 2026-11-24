@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { layout, toWorld, platformY, type Zone } from '../data/layout.ts';
 import { tagChip } from '../data/tags.ts';
 
-const RAISED = new Set(['hall', 'small', 'bar', 'kitchen']);
+const RAISED = new Set(['hall', 'bar', 'kitchen']);
 
 /** A marker's on-screen name: the label in layout.json. With no label it shows its tag, never invented text. */
 export const markerName = (z: Pick<Zone, 'label' | 'tag'>): string => z.label || z.tag;
