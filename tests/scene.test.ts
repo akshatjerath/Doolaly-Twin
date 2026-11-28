@@ -12,13 +12,13 @@ describe('scene matches the simulation', () => {
     const spots = placeTables(p);
     expect(spots.length).toBe(buildTables(p).length);
     expect(spots.reduce((s, t) => s + t.chairs.length, 0)).toBe(totalSeats(p));
-    for (const zone of ['outdoor', 'hall', 'small'] as const)
+    for (const zone of ['outdoor', 'hall'] as const)
       expect(spots.filter((t) => t.zone === zone).reduce((s, t) => s + t.seats, 0))
         .toBe(buildTables(p).filter((t) => t.zone === zone).reduce((s, t) => s + t.seats, 0));
   });
 
   it('follows slider changes to table counts', () => {
-    const q = { ...p, lower_6tops: 6, outdoor_2tops: 3 };
+    const q = { ...p, indoor_2tops: 1, outdoor_2tops: 2, outdoor_high8: 0 };
     expect(placeTables(q).reduce((s, t) => s + t.chairs.length, 0)).toBe(totalSeats(q));
   });
 

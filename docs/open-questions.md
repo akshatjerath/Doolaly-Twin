@@ -1,5 +1,26 @@
 # Open questions (answer these to remove ASSUMED LAYOUT markers)
 
+## Chembur layout v1 (2026-11-24): the layout now in the model
+Source: two digital floor plans and two hand sketches of Doolally Taproom, Chembur, supplied by the user. Not visited. The plans carry no scale, so every dimension is ASSUMED (0.0068 m per px). The Khar sections below are kept as history only; they no longer drive the layout.
+- Seats read from the plans: 23 tables, 81 seats (50 outdoor on 13 tables, 31 indoor on 10 tables). Bar stools are not drawn, so none are counted.
+
+Zones, each ASSUMED LAYOUT, with its open question:
+- Entrance from main road: door width and where the host stands.
+- Pavement queue (public space): where does the line form on a busy night?
+- Outdoor seating: real outdoor dimensions, covering and table sizes.
+- Passage between outdoor and indoor: how do guests get from the outdoor seating to the indoor door? The plans show two doors but not the link; no steps are drawn.
+- Indoor seating: real indoor dimensions, pillars (not modelled) and table sizes.
+- Bar: are there bar stools, and do walk-ins use them?
+- Kitchen entry: the interior is not modelled.
+- Bathroom entrance: the interior is not modelled.
+
+Other open points:
+1. Table I-10 (the only indoor four-seat table) is a "Server station" on the hand sketch. It is counted as a table; confirm.
+2. Evidence still from Khar: the visit log, register entries and the notes in `params.json` (arrival counts, wait times, patience) describe Khar, not Chembur. They are not Chembur evidence; the Chembur visit is not yet done.
+3. Proposed kiosk, lounge and takeaway positions are design proposals, not observed.
+4. Licence: can the venue serve small pours in a waiting area or sell takeaway? (register R8)
+
+## Superseded: Khar history (2026-11-14)
 ## Answered by the user (2026-11-14). Tag: OBSERVED, user recall, low confidence
 - Both photos in `reference/photos` are of Khar. Photo 1 = left open-air zone; photo 2 = large inside hall.
 - Waiting walk-ins stand on the pavement outside the gate.

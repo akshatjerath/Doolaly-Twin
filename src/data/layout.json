@@ -1,22 +1,47 @@
 {
-  "source": "reference/layout/layout-rough-v2.webp (rough floor plan supplied by the user, 2026-11-14; pixel coordinates, proportions only). Supersedes layout-sketch.png.",
-  "metresPerPx": { "value": 0.0165, "tag": "ASSUMED", "note": "The plan has no scale. Chosen so the drawn tables are a plausible size; every dimension in the scene follows from this." },
-  "stepCount": { "value": 4, "tag": "OBSERVED", "note": "User: steps go up, about 3-4 steps." },
-  "stepRiseM": { "value": 0.15, "tag": "ASSUMED", "note": "Riser height is a typical value, not measured." },
+  "source": "Doolally Taproom, Chembur: floor plan v1 (two digital plans and two hand sketches supplied by the user, 24 Nov 2026; pixel coordinates, proportions only). Replaces the Khar rough plan. Not visited.",
+  "metresPerPx": {"value": 0.0068, "tag": "ASSUMED", "note": "The plan has no scale. 0.0068 m per px makes a 2-seat table with chairs 1.4 m long. Every dimension in the scene follows from this."},
+  "stepCount": {"value": 0, "tag": "ASSUMED", "note": "No steps are drawn on the Chembur plans. Insufficient evidence either way; the floor is modelled level."},
+  "stepRiseM": {"value": 0.15, "tag": "ASSUMED", "note": "Unused while the step count is 0."},
+  "tableTypes": {"T2": {"seats": 2, "w": 200, "h": 170, "high": false}, "T3": {"seats": 3, "w": 250, "h": 170, "high": false}, "T4": {"seats": 4, "w": 290, "h": 170, "high": false}, "HT4": {"seats": 4, "w": 250, "h": 210, "high": true}, "HT6": {"seats": 6, "w": 340, "h": 210, "high": true}, "HT8": {"seats": 8, "w": 460, "h": 210, "high": true}},
+  "tables": [
+    {"id": "O-01", "zone": "outdoor", "type": "T4", "cx": 230, "cy": 260},
+    {"id": "O-02", "zone": "outdoor", "type": "T4", "cx": 230, "cy": 710},
+    {"id": "O-03", "zone": "outdoor", "type": "T3", "cx": 230, "cy": 1200},
+    {"id": "O-04", "zone": "outdoor", "type": "T2", "cx": 700, "cy": 260},
+    {"id": "O-05", "zone": "outdoor", "type": "T2", "cx": 700, "cy": 520},
+    {"id": "O-06", "zone": "outdoor", "type": "T2", "cx": 700, "cy": 780},
+    {"id": "O-07", "zone": "outdoor", "type": "T2", "cx": 700, "cy": 1040},
+    {"id": "O-08", "zone": "outdoor", "type": "T4", "cx": 1030, "cy": 200},
+    {"id": "O-09", "zone": "outdoor", "type": "T4", "cx": 1390, "cy": 200},
+    {"id": "O-10", "zone": "outdoor", "type": "T3", "cx": 1730, "cy": 200},
+    {"id": "O-11", "zone": "outdoor", "type": "HT8", "cx": 1730, "cy": 760, "rot": 90},
+    {"id": "O-12", "zone": "outdoor", "type": "HT6", "cx": 1190, "cy": 1290},
+    {"id": "O-13", "zone": "outdoor", "type": "HT6", "cx": 1585, "cy": 1290},
+    {"id": "I-01", "zone": "hall", "type": "T3", "cx": 2440, "cy": 823},
+    {"id": "I-02", "zone": "hall", "type": "T2", "cx": 2440, "cy": 1076},
+    {"id": "I-03", "zone": "hall", "type": "T3", "cx": 2440, "cy": 1304},
+    {"id": "I-04", "zone": "hall", "type": "T2", "cx": 2866, "cy": 1076},
+    {"id": "I-05", "zone": "hall", "type": "T2", "cx": 3232, "cy": 1076},
+    {"id": "I-06", "zone": "hall", "type": "T3", "cx": 3573, "cy": 1076},
+    {"id": "I-07", "zone": "hall", "type": "HT4", "cx": 2881, "cy": 640},
+    {"id": "I-08", "zone": "hall", "type": "HT4", "cx": 3428, "cy": 640},
+    {"id": "I-09", "zone": "hall", "type": "HT4", "cx": 3980, "cy": 767, "rot": 90},
+    {"id": "I-10", "zone": "hall", "type": "T4", "cx": 3980, "cy": 1053}
+  ],
   "proposed": [
-    { "id": "kiosk", "scenario": "A", "label": "Proposed waitlist kiosk", "rect": [225, 885, 265, 925], "note": "Does not exist today. A design proposal for a token kiosk just inside the gate. ASSUMED LAYOUT: no plan, photo or visit fixes where it would stand." },
-    { "id": "lounge", "scenario": "B", "label": "Proposed wait lounge", "rect": [500, 700, 685, 920], "note": "Does not exist today. A design proposal for the landing below the steps. Serving here needs Excise confirmation (register R8)." },
-    { "id": "takeaway", "scenario": "C", "label": "Proposed takeaway counter", "rect": [452, 790, 478, 925], "note": "Does not exist today. A design proposal beside the entrance. Takeaway sales need separate licensing (register R8)." }
+    {"id": "kiosk", "scenario": "A", "label": "Proposed waitlist kiosk", "rect": [890, 1385, 935, 1430], "note": "Does not exist today. A design proposal for a token kiosk just inside the main-road door. ASSUMED LAYOUT: no plan fixes where it would stand."},
+    {"id": "lounge", "scenario": "B", "label": "Proposed wait lounge", "rect": [60, 1310, 470, 1430], "note": "Does not exist today. A design proposal for the bottom-left corner of the outdoor seating. Serving here needs Excise confirmation (register R8)."},
+    {"id": "takeaway", "scenario": "C", "label": "Proposed takeaway counter", "rect": [484, 1330, 514, 1440], "note": "Does not exist today. A design proposal beside the main-road door. Takeaway sales need separate licensing (register R8)."}
   ],
   "zones": [
-    { "id": "entrance", "label": "Entrance and gate", "rect": [275, 870, 445, 950], "tag": "OBSERVED", "note": "At the street edge of the outdoor seating, facing Road No. 3 (user's rough plan).", "assumed": "Gate width, host stand position, wall heights.", "openQuestion": "" },
-    { "id": "pavement", "label": "Pavement queue (public space)", "rect": [275, 955, 760, 1040], "tag": "OBSERVED", "note": "User: walk-ins wait on the pavement outside the gate. This is public pavement, not venue space.", "assumed": "Pavement depth and where the line forms.", "openQuestion": "How long does the line get on a busy night?" },
-    { "id": "outdoor", "label": "Outdoor seating", "rect": [45, 300, 330, 860], "tag": "OBSERVED", "note": "Left side of the user's plan. Tent roof, plank floor and bar-height pine tables follow listing photo 1, which the user confirmed is this zone.", "assumed": "Dimensions and table count (the plan's four tables are indicative).", "openQuestion": "" },
-    { "id": "steps", "label": "Steps up to the indoor seating", "rect": [505, 620, 670, 690], "tag": "OBSERVED", "note": "User: about 3-4 steps going up. Position from the rough plan.", "assumed": "Riser height, width, and that the landing below opens onto the outdoor side.", "openQuestion": "How do guests reach the landing below the steps?" },
-    { "id": "hall", "label": "Indoor seating", "rect": [400, 330, 1180, 620], "tag": "OBSERVED", "note": "Upper part of the indoor hall with long tables (user's rough plan). Glass walls and pendant lamps follow listing photo 2.", "assumed": "Dimensions and table count (indicative).", "openQuestion": "" },
-    { "id": "small", "label": "Indoor seating, street side", "rect": [690, 640, 1150, 930], "tag": "OBSERVED", "note": "Lower part of the same indoor hall (user's rough plan).", "assumed": "Dimensions and table count (indicative).", "openQuestion": "" },
-    { "id": "bar", "label": "Bar", "rect": [455, 60, 940, 300], "tag": "ASSUMED LAYOUT", "note": "Position from the user's rough plan only, along the back of the indoor hall; fittings are not modelled. Bar stools are not counted as seats in the simulation.", "assumed": "Position, length, number of taps and stools, all fittings.", "openQuestion": "Is the bar where the rough plan shows it? Do walk-in parties use the bar stools?" },
-    { "id": "kitchen", "label": "Kitchen", "rect": [945, 60, 1280, 350], "tag": "ASSUMED LAYOUT", "note": "Position from the user's rough plan; the interior is not modelled.", "assumed": "Size and everything inside.", "openQuestion": "Kitchen interior is not modelled." },
-    { "id": "passage", "label": "Washrooms", "rect": [40, 55, 395, 255], "tag": "ASSUMED LAYOUT", "note": "Position from the user's rough plan; the interior is not modelled.", "assumed": "Size and everything inside.", "openQuestion": "Washroom interior is not modelled." }
+    {"id": "entrance", "label": "Entrance from main road", "rect": [520, 1370, 880, 1440], "tag": "ASSUMED LAYOUT", "note": "Door \"Entry from main road\" at the street edge of the outdoor seating (floor plan v1, user-drawn, not visited).", "assumed": "Door width, host stand position, wall heights.", "openQuestion": "Door width and where the host stands."},
+    {"id": "pavement", "label": "Pavement queue (public space)", "rect": [300, 1480, 1100, 1560], "tag": "ASSUMED LAYOUT", "note": "Where a queue would form outside the main-road door. No source says where it forms.", "assumed": "Pavement depth and where the line forms.", "openQuestion": "Where does the line form on a busy night?"},
+    {"id": "outdoor", "label": "Outdoor seating", "rect": [0, 0, 1960, 1440], "tag": "ASSUMED LAYOUT", "note": "Outdoor plan of floor plan v1: 13 tables, 50 seats. Table positions are schematic (the plan has no scale).", "assumed": "Dimensions, roof, floor, table sizes.", "openQuestion": "Real outdoor dimensions, covering and table sizes."},
+    {"id": "steps", "label": "Passage between outdoor and indoor", "rect": [1960, 290, 2240, 690], "tag": "ASSUMED LAYOUT", "note": "The plan shows an \"Entry for indoor seating\" door on the outdoor plan and an \"Entry from outdoor seating\" door on the indoor plan. How they link is not drawn; modelled as a short straight passage at floor level.", "assumed": "Where and how the two doors connect; no steps are shown.", "openQuestion": "How do guests get from the outdoor seating to the indoor door?"},
+    {"id": "hall", "label": "Indoor seating", "rect": [2240, 0, 4200, 1440], "tag": "ASSUMED LAYOUT", "note": "Indoor plan of floor plan v1: 10 tables, 31 seats. Table positions are schematic (the plan has no scale).", "assumed": "Dimensions, pillars (not modelled), table sizes.", "openQuestion": "Real indoor dimensions, pillars and table sizes."},
+    {"id": "bar", "label": "Bar", "rect": [2410, 0, 3960, 250], "tag": "ASSUMED LAYOUT", "note": "Bar along the top of the indoor plan. No bar stools are drawn, so none are counted as seats.", "assumed": "Bar length, taps, stools, fittings.", "openQuestion": "Are there bar stools, and do walk-ins use them?"},
+    {"id": "kitchen", "label": "Kitchen entry", "rect": [3930, 1200, 4200, 1440], "tag": "ASSUMED LAYOUT", "note": "Kitchen entry at the lower right of the indoor plan; the interior is not modelled.", "assumed": "Size and everything inside.", "openQuestion": "Kitchen interior is not modelled."},
+    {"id": "passage", "label": "Bathroom entrance", "rect": [4050, 0, 4200, 560], "tag": "ASSUMED LAYOUT", "note": "Bathroom entrance along the right wall of the indoor plan; the interior is not modelled.", "assumed": "Size and everything inside.", "openQuestion": "Washroom interior is not modelled."}
   ]
 }

@@ -295,7 +295,7 @@ $('export-png').addEventListener('click', () => {
   if (!shown || !table) return exportNote('Nothing to export yet.');
   const css = getComputedStyle(document.documentElement), colour = (v: string) => css.getPropertyValue(v).trim();
   const rows = [...table.rows].map((tr) => [...tr.cells].map((c) => c.innerText.split('\n')[0].trim()));
-  const lines = ['Doolally Khar twin: statistics', `Policy: ${shown.name}`,
+  const lines = ['Doolally Chembur twin: statistics', `Policy: ${shown.name}`,
     `SIMULATED, not measured. Mean [run-to-run spread, 95%] over ${shown.r.n} seeded evenings. Basis of every figure: ASSUMED inputs.`];
   const notes = [...table.querySelectorAll('small')].map((s) => s.textContent!.trim());
   const pad = 24, lh = 30, first = 520, other = 310, scale = 2;

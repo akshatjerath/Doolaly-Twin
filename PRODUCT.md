@@ -11,7 +11,7 @@ web
 - **Presenter:** the student, who runs it live and records a pitch video.
 
 ## Product Purpose
-An interactive 3D digital twin of Doolally Taproom, Khar (Mumbai), used as a case study. It shows a simulated evening in which walk-in parties wait for tables and some leave, and lets the viewer compare four ways of running the queue: the current manual queue, a digital waitlist, a small-pour wait lounge, and a takeaway counter.
+An interactive 3D digital twin of Doolally Taproom, Chembur (Mumbai), used as a case study. It shows a simulated evening in which walk-in parties wait for tables and some leave, and lets the viewer compare four ways of running the queue: the current manual queue, a digital waitlist, a small-pour wait lounge, and a takeaway counter.
 
 Success: a viewer can state what the model shows, try a scenario, and tell which figures are evidence and which are assumptions.
 

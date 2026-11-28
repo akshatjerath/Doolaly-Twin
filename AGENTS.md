@@ -1,4 +1,4 @@
-# Doolally Khar Digital Twin (EA 2)
+# Doolally Chembur Digital Twin (EA 2)
 
 Read before doing anything: `docs/claude-code-prompt.md` (full brief), `reference/layout/layout.md`, `reference/evidence-register.md`, `reference/CREDITS.md`.
 

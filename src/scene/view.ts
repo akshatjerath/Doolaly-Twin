@@ -115,9 +115,10 @@ export function createView(container: HTMLElement, scene: THREE.Scene, colliders
   });
 
   const bounds = toWorld(OUTLINE);
-  const hall = zoneRect('hall'), small = zoneRect('small'), steps = zoneRect('steps');
-  const onPlatform = (x: number, z: number) => (x > hall.x0 && z < hall.z1) || (x > small.x0 && z >= hall.z1);
-  const onSteps = (x: number, z: number) => x > steps.x0 && x < steps.x1 && z >= steps.z0 && z < steps.z1;
+  const hall = zoneRect('hall'), steps = zoneRect('steps');
+  // With no level change (platformY 0) every point is ground level and nothing is gated by steps.
+  const onPlatform = (x: number, z: number) => platformY() > 0 && x > hall.x0 && z < hall.z1;
+  const onSteps = (x: number, z: number) => platformY() > 0 && x > steps.x0 && x < steps.x1 && z >= steps.z0 && z < steps.z1;
   const level = (x: number, z: number) => (onPlatform(x, z) ? 'up' : onSteps(x, z) ? 'steps' : 'ground');
   const floorY = (x: number, z: number) => {
     const l = level(x, z);

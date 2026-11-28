@@ -188,7 +188,7 @@ describe('step 9a guest interruptions: off by default, isolated when on', () => 
 
   // Fingerprints of the event logs (replications 0 to 9) and of all 200 KPI rows, recorded from the code as it stood before step 9a.
   // They must only change if params.json values are changed on purpose; then re-record them.
-  const BEFORE = { baseline: ['65f66163', 'def80d53'], A: ['35af43bc', 'd57c9f9e'], B: ['f0dd8701', 'e5946fad'], C: ['5344a324', '4687f6c5'] };
+  const BEFORE = { baseline: ['ada93cc6', '23d8911e'], A: ['ff244d2b', 'fc2635a4'], B: ['cd938004', '90d9ab44'], C: ['468dc034', '46cb1ded'] }; // re-recorded 2026-11-24 for the Chembur 81-seat layout (params changed on purpose)
   it('with all three shares at 0 (the default), every policy reproduces the pre-9a event logs and KPI rows exactly', () => {
     expect([p.stepout_share, p.washroom_share, p.remake_share, p.remake_delay_min]).toEqual([0, 0, 0, 0]);
     for (const id of ['baseline', 'A', 'B', 'C'] as const) {

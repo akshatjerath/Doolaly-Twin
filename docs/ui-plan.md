@@ -127,7 +127,7 @@ A faculty member, client or classmate opens the page cold. Within 10 seconds the
 
 ```
 +--------------------------------------------------------------------------------------+
-| Doolally Khar twin   [SIMULATED, not measured]   20:55 Evening   || 1x 2x 4x 8x  (?) |
+| Doolally Chembur twin   [SIMULATED, not measured]   20:55 Evening   || 1x 2x 4x 8x  (?) |
 | Waiting 6 parties | Seated 36 people | Left 15 parties | Tokens 9 | Takeaway 0 L     |
 +----------------------+-------------------------------------------+-------------------+
 | HOW TO RUN IT        |                                           | AT A GLANCE       |

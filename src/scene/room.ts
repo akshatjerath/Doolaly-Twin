@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { SimParams } from '../data/params.ts';
 import { OUTLINE, toWorld, zoneRect, platformY, gateSpan, layout, type Rect } from '../data/layout.ts';
-import { placeTables, tableLength } from './furniture.ts';
+import { placeTables } from './furniture.ts';
 import { pbr, hatchTexture } from './textures.ts';
 
 export interface Room {
@@ -25,7 +25,7 @@ export function buildRoom(p: SimParams): Room {
   const roofs = new THREE.Group();
   const H = platformY();
   const outline = toWorld(OUTLINE);
-  const outdoor = zoneRect('outdoor'), hall = zoneRect('hall'), small = zoneRect('small');
+  const outdoor = zoneRect('outdoor'), hall = zoneRect('hall');
   const entrance = zoneRect('entrance'), steps = zoneRect('steps'), passage = zoneRect('passage'), kitchen = zoneRect('kitchen');
   const bar = zoneRect('bar'), pavement = zoneRect('pavement');
 
@@ -86,11 +86,9 @@ export function buildRoom(p: SimParams): Room {
   overlay(pavement, -0.02);
   slab(outline, 0, 0.12, floorMat('laminate_floor_02', outline, 2.8, 0xffd9a8));
 
-  // Raised inside floor: hall block plus the small-section block (the level change is OBSERVED; the rise is ASSUMED).
-  const blockA = { x0: hall.x0, z0: outline.z0, x1: outline.x1, z1: hall.z1 };
-  const blockB = { x0: small.x0, z0: hall.z1, x1: outline.x1, z1: outline.z1 };
-  slab(blockA, H, H, floorMat('laminate_floor_02', blockA, 2.4));
-  slab(blockB, H, H, floorMat('laminate_floor_02', blockB, 2.4));
+  // Inside floor. The Chembur plans show no level change, so H is 0 and no raised slab is needed (stepCount 0 in layout.json).
+  const blockA = hall;
+  if (H > 0) slab(blockA, H, H, floorMat('laminate_floor_02', blockA, 2.4));
 
   // Steps up, at the position marked in the sketch.
   const n = layout.stepCount.value, rise = layout.stepRiseM.value;
@@ -105,37 +103,38 @@ export function buildRoom(p: SimParams): Room {
 
   // --- Walls ---
   const lowH = 1.2, tallH = 3.1;
-  // Open-air side: low white boundary wall with a gate gap on the street edge.
-  wall(outline.x0, outline.z0, outline.x0, outline.z1, 0, lowH, wallWhite, 1, 0);
-  wall(outline.x0, outline.z0, hall.x0, outline.z0, 0, lowH, wallWhite, 0, 1);
   const gate = gateSpan();
-  wall(outline.x0, outline.z1, gate.x0, outline.z1, 0, lowH, wallWhite, 0, -1);
-  wall(gate.x1, outline.z1, small.x0, outline.z1, 0, lowH, wallWhite, 0, -1);
-  colliders.push({ x0: outline.x0, z0: outline.z1 - 0.1, x1: gate.x0, z1: outline.z1 + 0.1 }, { x0: gate.x1, z0: outline.z1 - 0.1, x1: outline.x1, z1: outline.z1 + 0.1 });
+  const thin = (x0: number, z0: number, x1: number, z1: number): Rect => ({ x0: Math.min(x0, x1) - 0.1, z0: Math.min(z0, z1) - 0.1, x1: Math.max(x0, x1) + 0.1, z1: Math.max(z0, z1) + 0.1 });
+  // Open-air side: low white boundary wall with a gate gap on the street edge (main-road door) and a gap where the passage to the indoor door starts.
+  wall(outdoor.x0, outdoor.z0, outdoor.x0, outdoor.z1, 0, lowH, wallWhite, 1, 0);
+  wall(outdoor.x0, outdoor.z0, outdoor.x1, outdoor.z0, 0, lowH, wallWhite, 0, 1);
+  wall(outdoor.x0, outdoor.z1, gate.x0, outdoor.z1, 0, lowH, wallWhite, 0, -1);
+  wall(gate.x1, outdoor.z1, outdoor.x1, outdoor.z1, 0, lowH, wallWhite, 0, -1);
+  wall(outdoor.x1, outdoor.z0, outdoor.x1, steps.z0, 0, lowH, wallWhite, -1, 0);
+  wall(outdoor.x1, steps.z1, outdoor.x1, outdoor.z1, 0, lowH, wallWhite, -1, 0);
+  colliders.push(thin(outdoor.x0, outdoor.z0, outdoor.x0, outdoor.z1), thin(outdoor.x0, outdoor.z0, outdoor.x1, outdoor.z0), thin(outdoor.x0, outdoor.z1, gate.x0, outdoor.z1), thin(gate.x1, outdoor.z1, outdoor.x1, outdoor.z1),
+    thin(outdoor.x1, outdoor.z0, outdoor.x1, steps.z0), thin(outdoor.x1, steps.z1, outdoor.x1, outdoor.z1), thin(steps.x0, steps.z0, steps.x1, steps.z0), thin(steps.x0, steps.z1, steps.x1, steps.z1));
   const gateWhite = new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.6 });
   for (let x = gate.x0; x <= gate.x1 + 0.01; x += 0.22) {
     const barM = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.5, 0.05), gateWhite);
-    barM.position.set(x, 0.75, outline.z1 + 0.6 * ((x - gate.x0) / (gate.x1 - gate.x0)));
+    barM.position.set(x, 0.75, outdoor.z1 + 0.6 * ((x - gate.x0) / (gate.x1 - gate.x0)));
     barM.castShadow = true;
     add(barM); // gate drawn ajar
   }
-  // Inside block: solid outer walls, glass towards the open-air side (glass is from listing photo 2).
-  wall(hall.x0, outline.z0, outline.x1, outline.z0, H, tallH, wallWhite, 0, 1);
-  wall(outline.x1, outline.z0, outline.x1, outline.z1, H, tallH, wallWhite, -1, 0);
-  wall(small.x0, outline.z1, outline.x1, outline.z1, H, tallH, wallWhite, 0, -1);
-  wall(hall.x0, outline.z0, hall.x0, hall.z1, H, tallH, glass, 1, 0);
-  wall(hall.x0, hall.z1, steps.x0, hall.z1, H, tallH, glass, 0, 1);
-  wall(steps.x1, hall.z1, small.x0, hall.z1, H, tallH, glass, 0, 1);
-  wall(small.x0, hall.z1, small.x0, outline.z1, H, tallH, glass, 1, 0);
-  for (const [x, z] of [[hall.x0, outline.z0], [hall.x0, hall.z1], [steps.x0, hall.z1], [steps.x1, hall.z1], [small.x0, hall.z1], [small.x0, outline.z1]]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, tallH, 0.08), metal);
-    post.position.set(x, H + tallH / 2, z);
-    add(post);
-  }
+  // Passage between the outdoor door and the indoor door: low side walls.
+  wall(steps.x0, steps.z0, steps.x1, steps.z0, 0, lowH, wallWhite, 0, 1);
+  wall(steps.x0, steps.z1, steps.x1, steps.z1, 0, lowH, wallWhite, 0, -1);
+  // Inside block: solid outer walls (material ASSUMED), with a door gap on the side that meets the passage.
+  wall(hall.x0, hall.z0, hall.x1, hall.z0, H, tallH, wallWhite, 0, 1);
+  wall(hall.x1, hall.z0, hall.x1, hall.z1, H, tallH, wallWhite, -1, 0);
+  wall(hall.x0, hall.z1, hall.x1, hall.z1, H, tallH, wallWhite, 0, -1);
+  wall(hall.x0, hall.z0, hall.x0, steps.z0, H, tallH, wallWhite, 1, 0);
+  wall(hall.x0, steps.z1, hall.x0, hall.z1, H, tallH, wallWhite, 1, 0);
+  colliders.push(thin(hall.x0, hall.z0, hall.x0, steps.z0), thin(hall.x0, steps.z1, hall.x0, hall.z1));
 
   // --- Roofs (walk mode only) ---
   const tent = new THREE.MeshStandardMaterial({ color: 0xf6f1e6, roughness: 0.95, side: THREE.DoubleSide });
-  const od = size({ x0: outline.x0, z0: outline.z0, x1: hall.x0, z1: outline.z1 });
+  const od = size(outdoor);
   for (const side of [-1, 1]) {
     const panel = new THREE.Mesh(new THREE.PlaneGeometry(od.w / 2 + 0.2, od.d), tent);
     panel.rotation.x = -Math.PI / 2;
@@ -143,7 +142,7 @@ export function buildRoom(p: SimParams): Room {
     panel.position.set(od.cx + (side * od.w) / 4, 3.0, od.cz);
     add(panel, roofs);
   }
-  for (const b of [blockA, blockB]) {
+  for (const b of [blockA]) {
     const s = size(b);
     const ceil = new THREE.Mesh(new THREE.PlaneGeometry(s.w, s.d), new THREE.MeshStandardMaterial({ color: 0xf3ead8, roughness: 1 }));
     ceil.rotation.x = Math.PI / 2;
@@ -169,12 +168,12 @@ export function buildRoom(p: SimParams): Room {
     return add(m);
   };
   for (const t of tables) {
-    const l = tableLength(t.seats) / 2 + 0.1, w = 0.85, hx = t.alongZ ? w : l, hz = t.alongZ ? l : w;
+    const l = t.len / 2 + 0.1, w = t.wid / 2 + 0.45, hx = t.alongZ ? w : l, hz = t.alongZ ? l : w;
     colliders.push({ x0: t.x - hx, z0: t.z - hz, x1: t.x + hx, z1: t.z + hz });
   }
   const tableH = (high: boolean) => (high ? 1.05 : 0.75);
   const baseY = (zone: string) => (zone === 'outdoor' ? 0 : H);
-  const topSize = (t: (typeof tables)[number]) => [tableLength(t.seats), t.seats <= 2 ? 0.7 : 0.8];
+  const topSize = (t: (typeof tables)[number]) => [t.len, t.wid];
   inst(new THREE.BoxGeometry(1, 0.05, 1), pine, tables.length, (i) => {
     const t = tables[i], [l, w] = topSize(t);
     dummy.position.set(t.x, baseY(t.zone) + tableH(t.high), t.z);
@@ -210,7 +209,7 @@ export function buildRoom(p: SimParams): Room {
     dummy.rotation.y = c.rot;
   });
 
-  // Table-top details seen in photo 2: napkin box and cutlery holder on each inside table.
+  // Table-top details: napkin box and cutlery holder on each inside table.
   const insideTables = tables.filter((t) => t.zone !== 'outdoor');
   inst(new THREE.BoxGeometry(0.13, 0.08, 0.13), cushion, insideTables.length, (i) => dummy.position.set(insideTables[i].x - 0.1, H + 0.815, insideTables[i].z));
   inst(new THREE.CylinderGeometry(0.045, 0.045, 0.13, 12), metal, insideTables.length, (i) => dummy.position.set(insideTables[i].x + 0.1, H + 0.84, insideTables[i].z + 0.05));
@@ -227,39 +226,18 @@ export function buildRoom(p: SimParams): Room {
   inst(new THREE.SphereGeometry(0.13, 16, 12), lampMat, globes.length, (i) => dummy.position.set(globes[i][0], lowH + 0.16, globes[i][1]));
 
   const lampLights: THREE.PointLight[] = [];
-  const hs = size(hall), ss = size(small), os = size(outdoor);
-  for (const [x, y, z] of [[hs.cx - hs.w / 4, H + 2.1, hs.cz], [hs.cx + hs.w / 4, H + 2.1, hs.cz], [ss.cx, H + 2.1, ss.cz], [os.cx, 2.3, os.cz - os.d / 4], [os.cx, 2.3, os.cz + os.d / 4]]) {
+  const hs = size(hall), os = size(outdoor);
+  for (const [x, y, z] of [[hs.cx - hs.w / 4, H + 2.1, hs.cz], [hs.cx + hs.w / 4, H + 2.1, hs.cz], [os.cx - os.w / 4, 2.3, os.cz], [os.cx + os.w / 4, 2.3, os.cz]]) {
     const l = new THREE.PointLight(0xffc27a, 30, 14, 2);
     l.position.set(x, y, z);
     lampLights.push(l);
     add(l);
   }
 
-  // --- Props seen in the listing photos (positions ASSUMED) ---
-  const shelf = new THREE.Group();
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.3, 0.4), pine);
-  frame.position.y = 1.15;
-  frame.castShadow = true;
-  shelf.add(frame);
-  const rnd = [0xc8553d, 0x2f6f9f, 0xe0b23c, 0x3f8f5f, 0x7a4f9a, 0xd98030];
-  for (let row = 0; row < 5; row++) for (let col = 0; col < 5; col++) {
-    const box = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.1), new THREE.MeshStandardMaterial({ color: rnd[(row * 5 + col * 3) % rnd.length], roughness: 0.7 }));
-    box.position.set(-0.55 + col * 0.27, 0.35 + row * 0.42, 0.2);
-    shelf.add(box);
-  }
-  shelf.position.set(outline.x1 - 0.3, H, (hall.z1 + outline.z1) / 2);
-  shelf.rotation.y = -Math.PI / 2;
-  shelf.scale.x = 2.2; // long games-and-books shelf along the side wall, as in the plan
-  add(shelf);
-
-  const board = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.3, 0.04), new THREE.MeshStandardMaterial({ color: 0x1d1f1e, roughness: 0.95 }));
-  board.position.set(hall.x0 - 0.04, 1.9, outdoor.z0 + 2);
-  board.rotation.y = Math.PI / 2;
-  add(board);
-
+  // --- Props (positions ASSUMED) ---
   const leaf = new THREE.MeshStandardMaterial({ color: 0x3f7d4a, roughness: 0.9 });
   const pot = new THREE.MeshStandardMaterial({ color: 0xa6603a, roughness: 0.9 });
-  const plants: [number, number][] = [[gate.x1 + 0.5, outline.z1 - 0.5], [gate.x0 - 0.5, outline.z1 - 0.5], [outline.x0 + 0.5, entrance.z0 + 0.4], [hall.x0 - 0.5, outline.z1 - 0.6]];
+  const plants: [number, number][] = [[gate.x1 + 0.5, outline.z1 - 0.5], [gate.x0 - 0.5, outline.z1 - 0.5], [outline.x0 + 0.5, entrance.z0 + 0.4], [outdoor.x1 - 0.5, outdoor.z1 - 0.6]];
   inst(new THREE.CylinderGeometry(0.2, 0.15, 0.35, 12), pot, plants.length, (i) => dummy.position.set(plants[i][0], 0.175, plants[i][1]));
   inst(new THREE.IcosahedronGeometry(0.38, 1), leaf, plants.length, (i) => dummy.position.set(plants[i][0], 0.72, plants[i][1]));
 
@@ -280,7 +258,7 @@ export function buildRoom(p: SimParams): Room {
     add(skin);
   }
 
-  colliders.push(bar, kitchen, passage, { x0: outline.x1 - 0.7, z0: shelf.position.z - 1.8, x1: outline.x1, z1: shelf.position.z + 1.8 },
+  colliders.push(bar, kitchen, passage,
     { x0: stand.position.x - 0.45, z0: stand.position.z - 0.3, x1: stand.position.x + 0.45, z1: stand.position.z + 0.3 });
 
   // --- Proposed (scenario B / C) elements: white ghost style, deliberately unlike the amber "assumed" hatch. ---
